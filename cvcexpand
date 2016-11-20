@@ -1,0 +1,992 @@
+#!/bin/bash
+################################################################################
+# Loading configuration
+################################################################################
+
+CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
+source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+
+# Initializing the output buffer
+declare -a CVCINTERNAL_OUTPUTBUFFER
+
+# Initialing internal storage variables
+# Those variables are needed to generate dynamic comments such as album names.
+declare -a CVCINTERNAL_CHARACTERS
+declare -a CVCINTERNAL_CHOIRS
+declare -a CVCINTERNAL_CONDUCTORS
+declare -a CVCINTERNAL_FIRSTWORDS
+declare -a CVCINTERNAL_ORCHESTRAS
+declare -a CVCINTERNAL_RECORDYEAR
+declare -a CVCINTERNAL_SLICETYPES
+declare -a CVCINTERNAL_SLICENUMBERS
+declare -a CVCINTERNAL_SLICETITLES
+declare -a CVCINTERNAL_WORKTITLE
+declare -a CVCINTERNAL_WORKTITLESORT
+
+# Initializing the hash table storing constants
+declare -A CVCINTERNAL_CONSTANTS
+
+# We store the path to the root CVC file to be able to detect the end
+# of recursive calls.
+if [ -z "${CVCINTERNAL_RootCVCFile}" ]
+then
+    CVCINTERNAL_RootCVCFile="$1"
+fi
+
+################################################################################
+# Documentation
+################################################################################
+
+# Return code reference
+# 1     Syntax error in invocation
+# 2     Missing argument
+# 3     Target CVC file does not exist
+# 4     Unknown inclusion directive
+# 5     Unknown alias
+# 6     Invalid line
+# 11    Constant substitution failure: unknown constant
+# 16    Internal error
+
+# Show usage
+function usage {
+    echo "Converts a Cascaded Vorbis Comments (CVC) file to a set of Vorbis Comments."
+    echo "The resulting Vorbis Comments are sent to standard output."
+    echo ""
+    echo "Usage: cvcexpand [-h] [-l <lang>] [-v] <file>"
+    echo ""
+    echo "Options:"
+    echo "-h            Show this message."
+    echo "-l <lang>     An optional target language code. If specified, Vorbis Comments"
+    echo "              belonging to other languages will be stripped out from the output."
+    echo "-v            Verbose mode. Verbose messages are sent to stderr."
+    echo ""
+    echo "Arguments:"
+    echo "<file>        The name of the CVC file to expand."
+}
+
+################################################################################
+# Option and argument parsing
+################################################################################
+
+# Default values
+TARGETLANGUAGE="${CFG_CVCExpand_DefaultLanguage}"
+
+# Calling option parser
+while getopts ":hl:v" option; do
+    case "${option}" in        
+        # -h: Help
+        h)
+            usage
+            ;;
+            
+        # -l: Language
+        l)
+            TARGETLANGUAGE="${OPTARG}"
+            ;;
+            
+        # -v: Verbose mode
+        v)
+            VERBOSE=1
+            ;;
+        
+        # Syntax error
+        \?)
+            >&2 echo "ERROR: Invalid option: -${OPTARG}"
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Syntax error
+        :)
+            >&2 echo "ERROR: Option -${OPTARG} requires an argument."
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Any other value is an internal error
+        *)
+            >&2 echo "ERROR: Internal getopts error."
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+# Checking whether a CVC file was supplied as an argument.
+if [ -z "$1" ]
+then
+    >&2 echo "ERROR: No CVC file specified."
+    usage
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 2 || exit 2
+fi
+
+################################################################################
+# Additional checks
+################################################################################
+
+# Abstracting supplied arguments
+targetCVCFile="$1"
+
+# Checking whether the supplied CVC file does exist
+if [ ! -f "${targetCVCFile}" ]
+then
+    >&2 echo "ERROR: The CVC file ${targetCVCFile} does not exist!"
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 3 || exit 3
+fi
+
+################################################################################
+# Internal routines
+################################################################################
+
+# Replace constant references with actual data in a value string.
+function substituteConstants {
+
+    if [ -z "$1" ]
+    then
+        >&2 echo "ERROR: Internal error: Bad substitution call."
+        [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
+    fi
+    
+    value="${1}"
+    
+    # Extracting symbols
+    matches=($(echo "${value}" | grep -oP '\{\{.*?\}\}'))
+    
+    # Performing substitution
+    for match in "${matches[@]}"; do
+        constantName="${match#\{\{}"
+        constantName="${constantName%\}\}}"
+        
+        if [ "${CVCINTERNAL_CONSTANTS[$constantName]}" ]
+        then
+            [ "${VERBOSE}" ] && >&2 echo "Retrieving constant '${constantName}'"
+            replacement="${CVCINTERNAL_CONSTANTS[$constantName]}"
+            value="${value//$match/$replacement}"
+        else
+            >&2 echo "ERROR: Unable to perform substitution as the constant is unknown."
+            >&2 echo "Unknown constant: '${constantName}'"
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 11 || exit 11
+        fi
+        
+    done
+    
+    # Returning the result
+    echo "${value}"
+}
+
+################################################################################
+# Processing file content
+################################################################################
+
+function processLine {
+
+    #---------------------------------------------------------------------------
+    # If the line is an inclusion directive, we process it here.
+    #---------------------------------------------------------------------------
+    if [[ "${line}" =~ ^@.* ]] && [[ $line == *"="* ]]
+    then
+    
+        # Generating directive properties
+        directive=${line%*=*}
+        value=${line#$directive=}
+        
+        # Performing constant subtitution
+        value=$(substituteConstants "${value}")
+    
+        # Generic @INCLUDE inclusion directive
+        if [ "$directive" == "@INCLUDE" ]
+        then
+            # Checking whether the file path is absolute or relative
+            if [[ "$value" =~ ^/.* ]]
+            then
+                nextFileToInclude=${value}
+            else
+                local currentFileDirname=$(dirname "${currentFile}")
+                nextFileToInclude="${currentFileDirname}/${value}.${CFG_FileExtensions_CVC}"
+            fi
+            
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found an @INCLUDE directive for file ${nextFileToInclude}"
+
+        # @CHOIR inclusion directive
+        elif [ "$directive" == "@CHOIR" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_CHOIR}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @CHOIR directive pointing towards ${nextFileToInclude}"
+
+        # @COMPOSER inclusion directive
+        elif [ "$directive" == "@COMPOSER" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_COMPOSER}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @COMPOSER directive pointing towards ${nextFileToInclude}"
+            
+        # @CONDUCTOR inclusion directive
+        elif [ "$directive" == "@CONDUCTOR" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_CONDUCTOR}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @CONDUCTOR directive pointing towards ${nextFileToInclude}"
+            
+        # @INSTRUMENT inclusion directive
+        elif [ "$directive" == "@INSTRUMENT" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_INSTRUMENT}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @INSTRUMENT directive pointing towards ${nextFileToInclude}"
+            
+        # @LABEL inclusion directive
+        elif [ "$directive" == "@LABEL" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_LABEL}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @LABEL directive pointing towards ${nextFileToInclude}"
+            
+        # @MUSICALERA inclusion directive
+        elif [ "$directive" == "@MUSICALERA" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_MUSICALERA}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @MUSICALERA directive pointing towards ${nextFileToInclude}"
+        
+        # @ORCHESTRA inclusion directive
+        elif [ "$directive" == "@ORCHESTRA" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_ORCHESTRA}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @ORCHESTRA directive pointing towards ${nextFileToInclude}"
+            
+        # @SLICE inclusion directive
+        elif [ "$directive" == "@SLICE" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_SLICE}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @SLICE directive pointing towards ${nextFileToInclude}"
+
+        # @SLICETYPE inclusion directive
+        elif [ "$directive" == "@SLICETYPE" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_SLICETYPE}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @SLICETYPE directive pointing towards ${nextFileToInclude}"
+            
+        # @SOLOIST inclusion directive
+        elif [ "$directive" == "@SOLOIST" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_SOLOIST}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @SOLOIST directive pointing towards ${nextFileToInclude}"
+        
+        # @WORK inclusion directive
+        elif [ "$directive" == "@WORK" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_WORK}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @WORK directive pointing towards ${nextFileToInclude}"
+
+        # @WORKTYPE inclusion directive
+        elif [ "$directive" == "@WORKTYPE" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_WORKTYPE}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @WORKTYPE directive pointing towards ${nextFileToInclude}"
+        
+        # If the directive is unknown, we halt here.
+        else
+            >&2 echo "ERROR: Unknown inclusion directive '${directive}' in file '${1}':"
+            >&2 echo "${line}"
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 4 || exit 4
+        fi
+        
+        # Recursive call
+        [ "${VERBOSE}" ] && >&2 echo "ACTION: Including file ${nextFileToInclude}"
+        processFile "${nextFileToInclude}"
+        [ "${VERBOSE}" ] && >&2 echo "INFO: Back to file ${currentFile}"
+    
+    #---------------------------------------------------------------------------
+    # Else, if the line is a constant, we need to store it.
+    #---------------------------------------------------------------------------
+    elif [[ "${line}" =~ ^!.* ]] && [[ $line == *"="* ]]
+    then
+    
+        # Generating constant properties
+        fullConstant=${line%*=*}
+        constant=${fullConstant%*:*}
+        value=${line#$fullConstant=}
+        constantUID=${constant#!}
+        
+        # Extracting constant language, if any
+        if [[ $fullConstant == *":"* ]]
+        then
+            constantLanguage=${fullConstant#$constant:}
+        else
+            constantLanguage=""
+        fi
+        
+        # We process the constant by default
+        processConstant=1
+        
+        # We only process the constant if it is relevant to the target language
+        if [ "${TARGETLANGUAGE}" ]
+        then
+            if [ "${constantLanguage}" ] && [ "${TARGETLANGUAGE}" != "${constantLanguage}" ]
+            then
+                [ "${VERBOSE}" ] && >&2 echo "INFO: Constant '${constantUID}' with language code '${constantLanguage}' was excluded due to language filtering."
+                processConstant=0
+            fi
+        fi
+        
+        # Storing the constant
+        if [ $processConstant -eq 1 ]
+        then
+            [ "${VERBOSE}" ] && >&2 echo "ACTION: Storing constant '${constantUID}' = '${value}'"
+            CVCINTERNAL_CONSTANTS["${constantUID}"]="${value}"
+        fi
+    
+    #---------------------------------------------------------------------------
+    # Else, if the line is an alias, we need to convert it to regular tags.
+    #---------------------------------------------------------------------------
+    elif [[ "${line}" =~ ^\+.* ]] && [[ $line == *"="* ]]
+    then
+    
+        # Generating alias properties
+        fullAlias=${line%*=*}
+        alias=${fullAlias%*:*}
+        value=${line#$fullAlias=}
+        
+        # Performing constant subtitution
+        value=$(substituteConstants "${value}")
+        
+        # Extracting subvalues
+        IFS="|" read -ra values <<< $value
+        
+        # Extracting alias language
+        if [[ $fullAlias == *":"* ]]
+        then
+            aliasLanguage=${fullAlias#$alias:}
+        else
+            aliasLanguage=""
+        fi
+        
+        # We process the alias by default
+        processAlias=1
+        
+        # We only process the alias if it is relevant to the target language
+        if [ "${TARGETLANGUAGE}" ]
+        then
+            if [ "${aliasLanguage}" ] && [ "${TARGETLANGUAGE}" != "${aliasLanguage}" ]
+            then
+                [ "${VERBOSE}" ] && >&2 echo "INFO: Alias '${alias}' with language code '${aliasLanguage}' was excluded due to language filtering."
+                processAlias=0
+            fi
+        fi
+        
+        if [ "${processAlias}" -eq 1 ]
+        then
+        
+            # +ALBUM --> Dynamically generated
+        
+            # +CHARACTER=FullName|ShortName
+            if [ "$alias" == "+CHARACTER" ]
+            then    
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_CHARACTERS+=("${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CHARACTER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CHARACTERSHORT=${values[1]}")      
+                elif [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_CHARACTERS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CHARACTER=${values[0]}")
+                fi
+        
+            # +CHOIRNAME=Fullname|Sortname|Shortname
+            elif [ "$alias" == "+CHOIRNAME" ]
+            then            
+                if [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_CHOIRS+=("${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLESORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLESHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_CHOIRS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLESORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                else
+                    CVCINTERNAL_CHOIRS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                fi
+        
+            # +COMPOSERNAME=Fullname|Sortname|Shortname
+            elif [ "$alias" == "+COMPOSERNAME" ]
+            then
+                if [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSHORT=${values[2]}")                    
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM_ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM ARTIST=${values[0]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM_ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM ARTIST=${values[0]}")
+                else
+                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM_ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM ARTIST=${values[0]}")
+                fi
+            
+            # +CONDUCTORNAME=Fullname|Sortname|Shortname
+            elif [ "$alias" == "+CONDUCTORNAME" ]
+            then            
+                if [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_CONDUCTORS+=("${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTOR=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTORSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTORSHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_CONDUCTORS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTOR=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTORSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                else
+                    CVCINTERNAL_CONDUCTORS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTOR=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                fi
+                
+            # +DISCNUMBER=Discnumber|Totaldiscs
+            elif [ "$alias" == "+DISCNUMBER" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("DISC=${values[0]}/${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUM=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUMBER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("TOTALDISCS=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DISCTOTAL=${values[1]}")
+                else
+                    CVCINTERNAL_OUTPUTBUFFER+=("DISC=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUM=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUMBER=${values[0]}")
+                fi
+            
+            # +FIRSTWORDS=FirstWords
+            elif [ "$alias" == "+FIRSTWORDS" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_FIRSTWORDS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("FIRSTWORDS=${values[0]}")
+                fi
+                
+            # +INSTRUMENT=InstrumentName
+            elif [ "$alias" == "+INSTRUMENT" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENT=${values[0]}")
+                fi
+            
+            # +INSTRUMENTALIST=Fullname|Sortname|Shortname|Instrument
+            elif [ "$alias" == "+INSTRUMENTALIST" ]
+            then
+                if [ "${values[3]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSORT=${values[1]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSHORT=${values[2]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                elif [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                else
+                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                fi
+                
+            # +KEY=MainKey|OpeningKey|ClosingKey
+            elif [ "$alias" == "+KEY" ]
+            then       
+                if [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("CLOSINGKEY=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("OPENINGKEY=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("KEY=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("MAINKEY=${values[0]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("OPENINGKEY=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("KEY=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("MAINKEY=${values[0]}")
+                else
+                    CVCINTERNAL_OUTPUTBUFFER+=("KEY=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("MAINKEY=${values[0]}")
+                fi
+            
+            # +LABELNAME=LabelName
+            elif [ "$alias" == "+LABELNAME" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("LABEL=${values[0]}")
+                fi
+            
+            # +LYRICS=Lyrics
+            elif [ "$alias" == "+LYRICS" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("LYRICS=${values[0]}")
+                fi
+                
+            # +MUSICALERANAME=MusicalEraName
+            elif [ "$alias" == "+MUSICALERANAME" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("GENRE=${values[0]}")
+                fi
+                
+            # +ORCHESTRANAME=Fullname|Sortname|Shortname
+            elif [ "$alias" == "+ORCHESTRANAME" ]
+            then            
+                if [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_ORCHESTRAS+=("${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRA=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRASORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRASHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_ORCHESTRAS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRA=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRASORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                else
+                    CVCINTERNAL_ORCHESTRAS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRA=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                fi
+                
+            # +RECORDED=RecordDate|RecordPlace
+            elif [ "$alias" == "+RECORDED" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDDATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDYEAR=${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDPLACE=${values[1]}")
+                else
+                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDDATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDYEAR=${values[0]:0:4}")
+                fi
+            
+            # +SLICENUMBER=SliceNumber
+            elif [ "$alias" == "+SLICENUMBER" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_SLICENUMBERS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SLICENUMBER=${values[0]}")
+                fi
+            
+            # +SLICETITLE=FullTitle|SortTitle|ShortTitle
+            elif [ "$alias" == "+SLICETITLE" ]
+            then            
+                if [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_SLICETITLES+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLESORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLESHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_SLICETITLES+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLESORT=${values[1]}")
+                elif [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_SLICETITLES+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKSLICETITLE=${values[0]}")
+                fi
+
+            # +SLICETYPE=SLICETYPE
+            elif [ "$alias" == "+SLICETYPE" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_SLICETYPES+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETYPE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("GENRE=${values[0]}")
+                fi
+            
+            # +SOLOISTNAME=Fullname|Sortname|Shortname|Instrument
+            elif [ "$alias" == "+SOLOISTNAME" ]
+            then
+                if [ "${values[3]}" ]
+                then
+                    CVCINTERNAL_SOLOISTS+=("${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSORT=${values[1]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSHORT=${values[2]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]} (${values[3]})")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                elif [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_SOLOISTS+=("${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_SOLOISTS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                else
+                    CVCINTERNAL_SOLOISTS+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                fi
+                
+            # +TRACKNUMBER=Tracknumber|Totaltracks
+            elif [ "$alias" == "+TRACKNUMBER" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("TRACK=${values[0]}/${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUM=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUMBER=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("TOTALTRACKS=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKTOTAL=${values[1]}")
+                else
+                    CVCINTERNAL_OUTPUTBUFFER+=("TRACK=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUM=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUMBER=${values[0]}")
+                fi
+            
+            # +TRACKTITLE --> Dynamically generated
+            
+            # +WORKID=Cataloguenumber|Cataloguename
+            elif [ "$alias" == "+WORKID" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("CATALOGID=${values[1]} ${values[0]}")
+                else
+                    CVCINTERNAL_OUTPUTBUFFER+=("CATALOGID=${values[0]}")
+                fi
+                
+            # +WORKSUBTITLE=Subtitle
+            elif [ "$alias" == "+WORKSUBTITLE" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKSUBTITLE=${values[0]}")
+                fi
+            
+            # +WORKTITLE=Fulltitle|Sorttitle|Shorttitle
+            elif [ "$alias" == "+WORKTITLE" ]
+            then            
+                if [ "${values[2]}" ]
+                then
+                    CVCINTERNAL_WORKTITLE+=("${values[0]}")
+                    CVCINTERNAL_WORKTITLESORT+=("${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLESORT=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLESHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_WORKTITLE+=("${values[0]}")
+                    CVCINTERNAL_WORKTITLESORT+=("${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLESORT=${values[1]}")
+                else
+                    CVCINTERNAL_WORKTITLE+=("${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLE=${values[0]}")
+                fi
+            
+            # +WORKTYPE=WorkType
+            elif [ "$alias" == "+WORKTYPE" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTYPE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("GENRE=${values[0]}")
+                fi
+
+            # If the alias is unknown, we halt here.
+            else
+                >&2 echo "ERROR: Unknown alias '${alias}' in file '${1}':"
+                >&2 echo "${line}"
+                [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 5 || exit 5
+            fi
+        fi
+    
+    #---------------------------------------------------------------------------
+    # If the line is blank or a commentary, we just ignore it.
+    #---------------------------------------------------------------------------
+    elif [ "${line}" == "" ] || [[ "${line}" =~ ^#.* ]]
+    then
+        :
+    
+    #---------------------------------------------------------------------------
+    # Else, if the line is valid, we just output it as is.
+    #---------------------------------------------------------------------------
+    elif [[ "${line}" == *"="* ]]
+    then
+        CVCINTERNAL_OUTPUTBUFFER+=("$line")
+        
+    else
+        >&2 echo "ERROR: Invalid line in file '${1}':"
+        >&2 echo "${line}"
+        [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 6 || exit 6
+    fi
+}
+
+function processFile {
+
+    # The currentFile variable needs to survive recursive calls.
+    local currentFile="${1}"
+    
+    # Processing lines.
+    while IFS='' read -r line || [[ -n "$line" ]]; do
+        processLine "${line}"
+    done < "${currentFile}"
+}
+
+################################################################################
+# Main entry point
+################################################################################
+
+processFile "${targetCVCFile}"
+
+################################################################################
+# Generating ALBUM and ALBUMTITLE
+################################################################################
+
+# Format: WorkTitle (Orchestras/Choirs/Conductors/Soloists, Year)
+
+# Initiating variables
+CVCINTERNAL_ALBUMSUFFIX=""
+
+# Adding orchestras to the album suffix
+if [ ! "${CVCINTERNAL_ORCHESTRAS}" == "" ]
+then
+    for orchestra in "${CVCINTERNAL_ORCHESTRAS[@]}"; do
+        CVCINTERNAL_ALBUMSUFFIX+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
+    done
+fi
+
+# Adding choirs to the album suffix
+if [ ! "${CVCINTERNAL_CHOIRS}" == "" ]
+then
+    for choir in "${CVCINTERNAL_CHOIRS[@]}"; do
+        CVCINTERNAL_ALBUMSUFFIX+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
+    done
+fi
+
+# Adding soloists to the album suffix
+if [ ! "${CVCINTERNAL_SOLOISTS}" == "" ] && [ "${#CVCINTERNAL_SOLOISTS[@]}" -lt 3 ]
+then
+    for soloist in "${CVCINTERNAL_SOLOISTS[@]}"; do
+        CVCINTERNAL_ALBUMSUFFIX+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
+    done
+fi
+
+# Adding conductors to the album suffix
+if [ ! "${CVCINTERNAL_CONDUCTORS}" == "" ]
+then
+    for conductor in "${CVCINTERNAL_CONDUCTORS[@]}"; do
+        CVCINTERNAL_ALBUMSUFFIX+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
+    done
+fi
+
+# Adding record year to the album suffix
+if [ "${CVCINTERNAL_RECORDYEAR}" ]
+then
+    CVCINTERNAL_ALBUMSUFFIX="${CVCINTERNAL_ALBUMSUFFIX%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCINTERNAL_RECORDYEAR}"
+else    
+    CVCINTERNAL_ALBUMSUFFIX="${CVCINTERNAL_ALBUMSUFFIX%${CFG_CVCExpand_DefaultDelimiter}}"
+fi
+
+if [ ! "${CVCINTERNAL_WORKTITLE}" == "" ]
+then
+    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM=${CVCINTERNAL_WORKTITLE} (${CVCINTERNAL_ALBUMSUFFIX})")
+    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMTITLE=${CVCINTERNAL_WORKTITLE} (${CVCINTERNAL_ALBUMSUFFIX})")
+fi
+
+if [ ! "${CVCINTERNAL_WORKTITLESORT}" == "" ]
+then
+    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMSORT=${CVCINTERNAL_WORKTITLESORT} (${CVCINTERNAL_ALBUMSUFFIX})")
+fi
+
+################################################################################
+# Generating TITLE and TRACKTITLE
+################################################################################
+
+# Format: SLICENUMBERs SLICETYPE (Characters) WorkSliceTitle
+
+# Initiating variables
+CVCINTERNAL_TRACKTITLE=""
+
+# If workslice numbers are defined, we show them at the beginning of the title
+if [ ! "${CVCINTERNAL_SLICENUMBERS}" == "" ]
+then
+    for SLICENUMBER in "${CVCINTERNAL_SLICENUMBERS[@]}"; do
+        CVCINTERNAL_TRACKTITLE+="${SLICENUMBER}${CFG_CVCExpand_DefaultDelimiter}"
+    done
+    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
+fi
+
+# If there is a slice type, we specify it here
+if [ ! "${CVCINTERNAL_SLICETYPES}" == "" ]
+then
+    for SLICETYPE in "${CVCINTERNAL_SLICETYPES[@]}"; do
+        CVCINTERNAL_TRACKTITLE+="${SLICETYPE}${CFG_CVCExpand_DefaultDelimiter}"
+    done
+    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
+fi
+
+# If characters are defined, we show them between braces
+if [ ! "${CVCINTERNAL_CHARACTERS}" == "" ]
+then
+    # We keep a trace of the characters we already shew to avoid duplicates.
+    characterLog=()
+    
+    # Characters are shown between braces
+    CVCINTERNAL_TRACKTITLE+="("
+    
+    for character in "${CVCINTERNAL_CHARACTERS[@]}"; do
+        # Checking whether the current character was already shown
+        skip=0
+        for loggedCharacter in "${characterLog[@]}"; do
+            if [ "${loggedCharacter}" == "${character}" ]
+            then
+                skip=1
+            fi
+        done
+    
+        # Showing character
+        if [ ${skip} -eq 0 ]
+        then
+            characterLog+=("${character}")
+            CVCINTERNAL_TRACKTITLE+="${character}${CFG_CVCExpand_DefaultDelimiter}"
+        fi
+    done
+    
+    # Closing braces
+    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}}) "
+fi
+
+# Next comes the slice title. If a title is defined, we use it.
+if [ ! "${CVCINTERNAL_SLICETITLES}" == "" ]
+then
+    for title in "${CVCINTERNAL_SLICETITLES[@]}"; do
+        CVCINTERNAL_TRACKTITLE+="${title}${CFG_CVCExpand_DefaultDelimiter}"
+    done
+    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
+
+# If no title is present, we try to use the first words as a title
+elif [ ! "${CVCINTERNAL_FIRSTWORDS}" == "" ]
+then
+    for firstwords in "${CVCINTERNAL_FIRSTWORDS[@]}"; do
+        CVCINTERNAL_TRACKTITLE+="'${firstwords}'${CFG_CVCExpand_DefaultDelimiter}"
+    done
+    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}}"
+
+# If we land here, the track is untitled.
+else
+    CVCINTERNAL_TRACKTITLE="${CFG_CVCExpand_UntitledTracks}"
+fi
+
+CVCINTERNAL_OUTPUTBUFFER+=("TITLE=${CVCINTERNAL_TRACKTITLE}")
+CVCINTERNAL_OUTPUTBUFFER+=("TRACKTITLE=${CVCINTERNAL_TRACKTITLE}")
+
+################################################################################
+# Outputing results
+################################################################################
+
+# We keep a log of all lines already shown to prevent outputing the same line twice.
+outputLog=()
+
+for line in "${CVCINTERNAL_OUTPUTBUFFER[@]}"; do
+
+    # We do not skip the line by default
+    skip=0
+
+    # Checking whether the current line is a duplicate
+    for loggedLine in "${outputLog[@]}"; do
+        if [ "${loggedLine}" == "${line}" ]
+        then
+            skip=1
+        fi
+    done
+    
+    # We log and output the line
+    if [ ${skip} -eq 0 ]
+    then
+        outputLog+=("${line}")
+        echo "${line}"
+    fi
+            
+done

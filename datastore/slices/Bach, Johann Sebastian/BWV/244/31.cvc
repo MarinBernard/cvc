@@ -1,0 +1,10 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Recitative
+@INSTRUMENT=Continuo
+@INSTRUMENT=Tenor
++KEY=B
++SLICENUMBER=II.31
++FIRSTWORDS=Die aber Jesum gegriffen hatten
++CHARACTER={{CHARACTER_EVANGELIST}}

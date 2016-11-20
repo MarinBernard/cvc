@@ -1,0 +1,11 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Recitative
+@INSTRUMENT=Bass
+@INSTRUMENT=Violin
+@INSTRUMENT=Viola
+@INSTRUMENT=Continuo
++KEY=Gm
++SLICENUMBER=II.64
++FIRSTWORDS=Am Abend, da es kühle war

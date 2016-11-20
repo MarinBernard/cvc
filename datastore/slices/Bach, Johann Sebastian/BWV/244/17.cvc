@@ -1,0 +1,12 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Chorale
+@INSTRUMENT=Choir
+@INSTRUMENT=Oboe
+@INSTRUMENT=Violin
+@INSTRUMENT=Viola
+@INSTRUMENT=Continuo
++KEY=Ef
++SLICENUMBER=I.17
++FIRSTWORDS=Ich will hier bei dir stehen

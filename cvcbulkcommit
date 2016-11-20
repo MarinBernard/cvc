@@ -1,0 +1,126 @@
+#!/bin/bash
+################################################################################
+# Loading configuration
+################################################################################
+
+CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
+source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+
+################################################################################
+# Documentation
+################################################################################
+
+# Return code reference
+# 1     Syntax error in invocation
+# 2     Missing argument
+# 3     Target directory does not exist
+# 16    Internal error
+
+# Show usage
+function usage {
+    echo "This script runs cvccommit for all the CVC files of a directory, thus"
+    echo "allowing to quickly update metadata for whole albums."
+    echo ""
+    echo "Usage: cvcbulkcommit [-f] [-h] [-l <lang>] [-v] <directory>"
+    echo ""
+    echo "Options:"
+    echo "-f            Overwrite preexisting cvc files."
+    echo "-h            Show this message."
+    echo "-l <lang>     Specify a language filter (cvccommit -l option)."
+    echo "-v            Verbose mode."
+    echo ""
+    echo "Arguments:"
+    echo "<directory>   A directory containing CVC files."
+}
+
+################################################################################
+# Option and argument parsing
+################################################################################
+
+# Default settings
+extraArgs=""
+
+# Calling option parser
+while getopts ":fhv" option; do
+    case "${option}" in
+        # -f: Force mode
+        f)
+            extraArgs+="-f "
+            ;;
+        
+        # -h: Help
+        h)
+            usage
+            ;;
+        
+        # -l: Language filter
+        l)
+            extraArgs+="-l ${OPTARG}"
+            ;;    
+            
+        # -v: Verbose mode
+        v)
+            VERBOSE=1
+            extraArgs+="-v "
+            ;;
+        
+        # Syntax error
+        \?)
+            >&2 echo "ERROR: Invalid option: -${OPTARG}"
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Syntax error
+        :)
+            >&2 echo "ERROR: Option -${OPTARG} requires an argument."
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Any other value is an internal error
+        *)
+            >&2 echo "ERROR: Internal getopts error."
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+# Checking whether a directory was supplied as an argument.
+if [ -z "$1" ]
+then
+    >&2 echo "ERROR: No directory specified."
+    usage
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 2 || exit 2
+fi
+
+################################################################################
+# Additional checks
+################################################################################
+
+# Abstracting supplied arguments. We remove the trailing /
+targetDirectory="${1%/}"
+
+# Checking whether the supplied directory does exist
+if [ ! -d "${targetDirectory}" ]
+then
+    >&2 echo "ERROR: Directory '${targetDirectory}' does not exist."
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 3 || exit 3
+fi
+
+################################################################################
+# Calling cvccommit
+################################################################################
+
+# Initializing file counter
+fileCount=0
+
+for cvcFile in "${targetDirectory}/"*.${CFG_FileExtensions_CVC}
+do
+    ((fileCount+=1))
+    [ "${VERBOSE}" ] && echo "Processing file #${fileCount}: ${cvcFile}..."
+    
+    "${CFG_CVCTools_CVCCommit}" ${extraArgs} "${cvcFile}"
+done

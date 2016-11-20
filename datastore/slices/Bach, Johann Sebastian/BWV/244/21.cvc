@@ -1,0 +1,14 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Recitative
+@INSTRUMENT=Violin
+@INSTRUMENT=Viola
+@INSTRUMENT=Continuo
+@INSTRUMENT=Tenor
+@INSTRUMENT=Bass
++KEY=B
++SLICENUMBER=I.21
++FIRSTWORDS=Und ging hin ein wenig
++CHARACTER={{CHARACTER_EVANGELIST}}
++CHARACTER={{CHARACTER_JESUS}}

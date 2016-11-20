@@ -1,0 +1,14 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Recitative
+@INSTRUMENT=Violin
+@INSTRUMENT=Viola
+@INSTRUMENT=Continuo
+@INSTRUMENT=Tenor
+@INSTRUMENT=Bass
++KEY=Fs
++SLICENUMBER=I.28
++FIRSTWORDS=Und siehe, einer aus denen
++CHARACTER={{CHARACTER_EVANGELIST}}
++CHARACTER={{CHARACTER_JESUS}}

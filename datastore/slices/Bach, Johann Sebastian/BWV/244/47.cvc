@@ -1,0 +1,12 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Recitative
+@INSTRUMENT=Continuo
+@INSTRUMENT=Tenor
+@INSTRUMENT=Bass
++KEY=Bm
++SLICENUMBER=II.47
++FIRSTWORDS=Der Landpfleger sagte
++CHARACTER={{CHARACTER_EVANGELIST}}
++CHARACTER={{CHARACTER_PILATE}}

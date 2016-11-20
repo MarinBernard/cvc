@@ -1,0 +1,15 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Recitative
+@INSTRUMENT=Violin
+@INSTRUMENT=Viola
+@INSTRUMENT=Continuo
+@INSTRUMENT=Tenor
+@INSTRUMENT=Bass
++KEY=Em
++SLICENUMBER=II.36a
++FIRSTWORDS=Und der Hohepriester antwortete und sprach zu ihm
++CHARACTER={{CHARACTER_EVANGELIST}}
++CHARACTER={{CHARACTER_HIGHPRIEST}}
++CHARACTER={{CHARACTER_JESUS}}

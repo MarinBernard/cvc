@@ -1,0 +1,6 @@
+- cvcbulkcreate: Add support for autodetection of total number of disks and tracks.
+  
+- cvcceate: Add support for content substitution.
+  
+- cvcexpand: Add support for mandatory tags or aliases. This would make CVC
+  expansion throw an error if such tags or aliases are missing.

@@ -1,0 +1,53 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@COMPOSER=Bach, Johann Sebastian
+@WORKTYPE=Oratorio
++WORKTITLE:fr=Passion selon Saint Matthieu|Passion selon Saint Matthieu
++WORKTITLE:de=Matthäus-Passion|Matthäus-Passion
++WORKSUBTITLE:en=The Passion of our Lord Jesus Christ according to the Evangelist Matthew
++WORKSUBTITLE:la=Passio Domini nostri Jesu Christi secundum Evangelistam Matthaeum
++WORKSUBTITLE:fr=Passion de notre Seigneur Jésus-Christ selon l'Évangéliste Matthieu
++WORKID=244|BWV
++WORKID=D3b|BC
+#
+# Character names
+#
+!CHARACTER_EVANGELIST:de=Evangelist|Ev
+!CHARACTER_EVANGELIST:en=Evangelist|Ev
+!CHARACTER_EVANGELIST:fr=Évangéliste|Év
+
+!CHARACTER_JESUS:de=Jesus|Je
+!CHARACTER_JESUS:en=Jesus|Je
+!CHARACTER_JESUS:fr=Jésus|Jé
+
+!CHARACTER_JUDAS:de=Judas|Ju
+!CHARACTER_JUDAS:en=Judas|Ju
+!CHARACTER_JUDAS:fr=Judas|Ju
+
+!CHARACTER_PETER:de=Petrus|Pe
+!CHARACTER_PETER:en=Peter|Pe
+!CHARACTER_PETER:fr=Pierre|Pie
+
+!CHARACTER_PILATE:de=Pilatus|Pi
+!CHARACTER_PILATE:en=Pilate|Pi
+!CHARACTER_PILATE:fr=Pilate|Pi
+
+!CHARACTER_PILATESWIFE:de=Die Frau des Pilatus|FPi
+!CHARACTER_PILATESWIFE:en=Pilate's wife|PiW
+!CHARACTER_PILATESWIFE:fr=La femme de Pilate|FPi
+
+!CHARACTER_HIGHPRIEST:de=Hohepriester|Hp
+!CHARACTER_HIGHPRIEST:en=High Priest|HP
+!CHARACTER_HIGHPRIEST:fr=Grand Prêtre|GP
+
+!CHARACTER_2HIGHPRIESTS:de=2 Hohepriester|2Hp
+!CHARACTER_2HIGHPRIESTS:en=2 High Priests|2HP
+!CHARACTER_2HIGHPRIESTS:fr=2 Grand Prêtres|2GP
+
+!CHARACTER_2WITNESSES:de=2 Zeugen|2Ze
+!CHARACTER_2WITNESSES:en=2 witnesses|2wi
+!CHARACTER_2WITNESSES:fr=2 témoins|2Té
+
+!CHARACTER_2MAIDS:de=2 Mägde|2Mä
+!CHARACTER_2MAIDS:en=2 maids|2ma
+!CHARACTER_2MAIDS:fr=2 femmes|2fe

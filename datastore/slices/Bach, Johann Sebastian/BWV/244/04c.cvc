@@ -1,0 +1,10 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Recitative
+@INSTRUMENT=Continuo
+@INSTRUMENT=Tenor
++KEY=C
++SLICENUMBER=I.4c
++FIRSTWORDS=Da nun Jesus war zu Bethanien
++CHARACTER={{CHARACTER_EVANGELIST}}

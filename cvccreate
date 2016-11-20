@@ -1,0 +1,170 @@
+#!/bin/bash
+################################################################################
+# Loading configuration
+################################################################################
+
+CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
+source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+
+# This array stores custom constant definitions
+declare -A CVCINTERNAL_CUSTOMCONSTANTS
+
+################################################################################
+# Documentation
+################################################################################
+
+# Return code reference
+# 1     Syntax error in invocation
+# 2     Missing argument
+# 3     Target audio file does not exist
+# 4     Target template does not exist
+# 5     CVC file already exists and force mode is off
+# 16    Internal error
+
+# Show usage
+function usage {
+    echo "Creates a CVC file for a given audio file. The script may use an optional"
+    echo "CVC template."
+    echo ""
+    echo "Usage: cvccreate [-f] [-h] [-t <template>] [-v] [-C <name>=<value>] <file>"
+    echo ""
+    echo "Options:"
+    echo "-C <name>=<value> Defines a custom constant of name <name> and value"
+    echo "                  <value>. Custom constants may be used with templates"
+    echo "                  supporting content substtution. This option may appear"
+    echo "                  more than once."
+    echo "-f                Overwrite current cvc file."
+    echo "-h                Show this message."
+    echo "-t <template>     The name of the CVC template to use, without the .cvt"
+    echo "                  extension. CVC templates are used to prestage CVC files"
+    echo "                  with static or dynamic content".
+    echo "-v                Verbose mode."
+    echo ""
+    echo "Arguments:"
+    echo "<file>        The name of an audio file."
+}
+
+################################################################################
+# Option and argument parsing
+################################################################################
+
+# Calling option parser
+while getopts ":fht:vC:" option; do
+    case "${option}" in
+        # -f: Force mode
+        f)
+            FORCE=1
+            ;;
+        
+        # -h: Help
+        h)
+            usage
+            ;;
+            
+        # -t: Template
+        t)
+            CVCTemplate="${CFG_CVCTemplatesPath}/${OPTARG}.${CFG_FileExtensions_CVCTemplates}"
+            ;;
+            
+        # -v: Verbose mode
+        v)
+            VERBOSE=1
+            ;;
+        
+        # -C: Constant definition
+        C)
+            # Checking constant definition
+            if [[ ! "${OPTARG}" == *"="* ]]
+            then
+                >&2 echo "ERROR: Bad constant definition: ${OPTARG}"
+                usage
+                [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            fi
+            
+            # Storing the constant
+            constantName="${OPTARG%=*}"
+            constantValue="${OPTARG#*=}"
+            CVCINTERNAL_CUSTOMCONSTANTS["${constantName}"]="${constantValue}"
+            ;;
+        
+        # Syntax error
+        \?)
+            >&2 echo "ERROR: Invalid option: -${OPTARG}"
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Syntax error
+        :)
+            >&2 echo "ERROR: Option -${OPTARG} requires an argument."
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Any other value is an internal error
+        *)
+            >&2 echo "ERROR: Internal getopts error."
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+# Checking whether an audio file was supplied as an argument.
+if [ -z "$1" ]
+then
+    >&2 echo "ERROR: No audio file specified."
+    usage
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 2 || exit 2
+fi
+
+################################################################################
+# Additional checks
+################################################################################
+
+# Abstracting supplied arguments
+targetAudioFile="$1"
+
+# Checking whether the supplied audio file does exist
+if [ ! -f "${targetAudioFile}" ]
+then
+    >&2 echo "ERROR: The audio file ${targetAudioFile} does not exist!"
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 3 || exit 3
+fi
+
+# Generating related filenames
+targetFileBasename=$(basename "${targetAudioFile}" ".${CFG_FileExtensions_Audio}")
+targetFileBasedir=$(dirname "${targetAudioFile}")
+targetCVCFile="${targetFileBasename}.${CFG_FileExtensions_CVC}"
+
+# Checking whether the CVC template is valid
+if [ "${CVCTemplate}" ] && [ ! -f "${CVCTemplate}" ]
+then    
+    >&2 echo "ERROR: CVC template file '${CVCTemplate}' does not exist."
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 4 || exit 4
+fi
+
+# We need to be sure the CVC file does not already exist, unless FORCE mode
+# is defined
+if [ -f "${targetCVCFile}" ] && [ -z "${FORCE}"]
+then
+    >&2 echo "ERROR: The CVC file '${targetCVCFile}' already exists."
+    >&2 echo "Use the -f option to overwrite."
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 5 || exit 5
+fi
+
+################################################################################
+# Creating CVC file
+################################################################################
+
+currentDate=$(date -I)
+
+[ "${VERBOSE}" ] && echo "Creating CVC file ${targetCVCFile}..."
+echo "# Cascaded Vorbis Comments file" >> "${targetCVCFile}"
+echo "# Created: ${currentDate}" >> "${targetCVCFile}"
+
+if [ "${CVCTemplate}" ]
+then
+    cat "${CVCTemplate}" >> "${targetCVCFile}"
+fi

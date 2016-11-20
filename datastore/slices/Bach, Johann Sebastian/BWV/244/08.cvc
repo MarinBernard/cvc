@@ -1,0 +1,12 @@
+# Cascaded Vorbis Comments file
+# Created: 2016-11-12
+@WORK=Bach, Johann Sebastian/BWV/244
+@SLICETYPE=Aria
+@INSTRUMENT=Soprano
+@INSTRUMENT=Flute
+@INSTRUMENT=Violin
+@INSTRUMENT=Viola
+@INSTRUMENT=Continuo
++KEY=Bm
++SLICENUMBER=I.8
++FIRSTWORDS=Blute nur, du liebes Herz

@@ -1,0 +1,75 @@
+2016-11-20
+  - cvccommit: Picture embedding support was improved.
+  
+  - cvccommit, cvcbulkcommit: The tools now support language filters with
+    the -l option, just like cvcexpand does. Option value is sent to cvcexpand
+    as-is (passthrough).
+  
+  - common: All scripts now use getopts to parse options.
+  
+  - cvccreate: Added options to pass arbitrary constants to the script. Such
+    constants are useful when dealing with template substitution, which
+    enables automatic inclusion supplied data into newly created CVC files.
+    
+  - cvcbulkcreate: The tool is now able to extract disc and track numbers from
+    file names. This is stil experimental though, and meant to be supplied as
+    custom constants to cvccreate.
+    
+  - cvcbulkcreate, cvcbulkcommit: Calls to find are replaced by bash loops.
+
+2016-11-19
+  - common: Added file 'config.inc' as a central configuration file common to
+    all scripts.
+    
+  - common: Changed extension of CVC files from .tags to .cvc.
+  
+  - common: Reserved the .tags file extension to store expanded Vorbis
+    Comments in companion files.
+    
+  - cvcexpand: @INCLUDE directive failed in complex path contexts.
+  
+  - cvcexpand: Changed item delimiter to "/" when dealing with multiple
+    values. This delimiter might be modified by tweaking the
+    'CFG_CVCExpand_DefaultDelimiter' configuration parameter.
+    
+  - cvcexpand: Alias '+FIRSTWORDS' was added to store the first words of a
+    vocal work slice.
+    
+  - cvcexpand: Dynamic track title generator was modified to include the value
+    of '+FIRSTWORDS' if no '+WORKSLICETITLE' alias is present.
+    
+  - cvcexpand: Dynamic track title generator was modified to include a
+    placeholder for untitled tracks. This placeholder might be modified by
+    tweaking the 'CFG_CVCExpand_UntitledTracks' configuration parameter.
+
+  - cvcexpand: Alias '+LYRICS' was added.
+  
+  - cvcexpand: Added a feature to show characters once in track titles. Before,
+    characters names which were mentioned several times were displayed more
+    than once.
+  
+  - cvccommit: 'cvcupdatetags' was renamed to 'cvccommit'.
+  
+  - cvccommit: cvccommit now stores expanded CVC files on disk, into .tags
+    companion files. Tags in FLAC files are only updated if the modification
+    time of the .tags file is newer than the one of the related FLAC file.
+    Updates can be forced with the 'force' parameter.
+    
+  - cvccommit: Added an ignore list to cvccommit to avoid returning an error
+    when processing special files, such as 'album.cvc'.
+    
+  - cvccommit: Added support for embedded album art. Now, cvccommit tries to
+    embed album pictures into flac files as part of update operations.
+    
+  - cvcbulkcommit: 'cvcbulkupdatetags' was renamed to 'cvcbulkcommit'.
+  
+  - cvccreate: Tool 'cvccreate' was added. This tool creates a CVC companion
+    file for a given media file. It may populate the CVC file with content from
+    a template file. CVC template files have the extension .cvt, and are located
+    by default in the 'templates' directory.
+    
+  - cvcbulkcreate: Tool 'cvcbulkcreate' was added. It runs cvccreate on all
+    media files of a given directory.
+
+2016-11-13
+    - Initial version.

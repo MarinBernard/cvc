@@ -1,0 +1,304 @@
+#!/bin/bash
+################################################################################
+# Loading configuration
+################################################################################
+
+CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
+source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+
+################################################################################
+# Documentation
+################################################################################
+
+# Return code reference
+# 1     Syntax error in invocation
+# 2     Missing argument
+# 3     Target CVC file does not exist
+# 4     Related audio file does not exist
+# 5     Error during CVC expansion: cvcexpand returned an error
+# 6     metaflac couldn't remove current tags from the audio file
+# 7     metaflac couldn't import new tags to the audio file
+# 8     metaflac couldn't remove embedded pictures from the audio file
+# 9     metaflac couldn't embed a picture into an audio file
+# 16    Internal error
+
+# Show usage
+function usage {
+    echo "This command updates Vorbis Comments within FLAC files. It expands a CVC file"
+    echo "to Vorbis Comments using cvcexpand, stores the resulting tags to a companion"
+    echo "file with the .tags extension, then updates the actual audio file using"
+    echo "metaflac. On-disk updates are only performed when needed."
+    echo ""
+    echo "Usage: cvccommit [-f] [-h] [-l <lang>] [-v] <file>"
+    echo ""
+    echo "Options:"
+    echo "-f            Force the script to perform on-disk updates, even if it seems"
+    echo "              not necessary".
+    echo "-h            Show this message."
+    echo "-l <lang>     Specify a language filter (cvcexpand -l option)."
+    echo "-v            Verbose mode."
+    echo ""
+    echo "Arguments:"
+    echo "<file>        A text file with CVC content."
+}
+
+################################################################################
+# Option and argument parsing
+################################################################################
+
+# Default values
+cvcexpandExtraArgs=""
+
+# Calling option parser
+while getopts ":fhl:v" option; do
+    case "${option}" in
+        # -f: Force mode
+        f)
+            FORCE=1
+            ;;
+        
+        # -h: Help
+        h)
+            usage
+            ;;
+        
+        # -l: Language filter
+        l)
+            cvcexpandExtraArgs+="-l ${OPTARG}"
+            ;;        
+            
+        # -v: Verbose mode
+        v)
+            VERBOSE=1
+            ;;
+        
+        # Syntax error
+        \?)
+            >&2 echo "ERROR: Invalid option: -${OPTARG}"
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Syntax error
+        :)
+            >&2 echo "ERROR: Option -${OPTARG} requires an argument."
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Any other value is an internal error
+        *)
+            >&2 echo "ERROR: Internal getopts error."
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+# Checking whether a CVC file was supplied as an argument.
+if [ -z "$1" ]
+then
+    >&2 echo "ERROR: No CVC file was specified."
+    usage
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 2 || exit 2
+fi
+
+################################################################################
+# Additional checks
+################################################################################
+
+# Abstracting supplied arguments
+targetCVCFile="$1"
+
+# Checking whether the supplied CVC file does exist
+if [ ! -f "${targetCVCFile}" ]
+then
+    >&2 echo "ERROR: The CVC file ${targetCVCFile} does not exist!"
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 3 || exit 3
+fi
+
+# Generating related filenames
+targetFileBasename=$(basename "$1" .${CFG_FileExtensions_CVC})
+targetFileBasedir=$(dirname "${targetCVCFile}")
+targetAudioFile="${targetFileBasename}.${CFG_FileExtensions_Audio}"
+targetTagsFile="${targetFileBasename}.${CFG_FileExtensions_Tags}"
+
+# If the supplied CVC filename is in the ignore list, we escape here.
+for ignoredFilename in "${CFG_CVCCommit_IgnoredFilenames[@]}"; do
+    if [ "${targetFileBasename}" == "${ignoredFilename}" ]
+    then
+        [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 0 || exit 0
+    fi
+done
+
+# Checking whether the related audio file does exist
+if [ ! -f "${targetAudioFile}" ]
+then
+    >&2 echo "ERROR: The related audio file ${targetAudioFile} does not exist!"
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 4 || exit 4
+fi
+
+################################################################################
+# Performing CVC expansion
+################################################################################
+
+[ "${VERBOSE}" ] && echo "Performing CVC expansion on file ${targetCVCFile}..."
+expansionOutput=$("${CFG_CVCTools_CVCExpand}" ${cvcexpandExtraArgs} "${targetCVCFile}")
+
+if [ ! "$?" -eq 0 ]
+then
+    >&2 echo "ERROR: Error in CVC expansion. Operation halted."
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 5 || exit 5
+fi
+
+################################################################################
+# Data comparison and tags file update
+################################################################################
+
+# We only compare Vorbis Comments if a .tags file already exists.
+if [ -f "${targetTagsFile}" ]
+then
+    echo "${expansionOutput}" | diff -q "${targetTagsFile}" - > /dev/null
+    
+    if [ "$?" -gt 0 ] || [ "${FORCE}" ]
+    then
+        [ "${VERBOSE}" ] && echo "Updating tag file ${targetTagsFile}..."
+        echo "${expansionOutput}" > "${targetTagsFile}"
+    else
+        [ "${VERBOSE}" ] && echo "Tag file is already up to date."
+    fi
+
+# If not tags file exists, we write a new one now
+else
+    [ "${VERBOSE}" ] && echo "Creating tag file '${targetTagsFile}'..."
+    echo "${expansionOutput}" > "${targetTagsFile}"
+fi
+
+################################################################################
+# Updating tags
+################################################################################
+
+if [[ "${targetTagsFile}" -nt "${targetAudioFile}" ]] || [ "${FORCE}" ]
+then
+    [ "${VERBOSE}" ] && echo "Updating metadata in audio file ${targetAudioFile}..."
+    
+    # Deleting current FLAC tags
+    "${CFG_ExtTools_Metaflac}" --remove-all-tags "${targetAudioFile}" > /dev/null
+    if [ ! "$?" -eq 0 ]
+    then
+        >&2 echo "ERROR: Unable to erase current FLAC tags. Operation halted."
+        [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 6 || exit 6
+    fi
+
+    # Adding the new tags
+    "${CFG_CVCTools_CVCExpand}" "${targetCVCFile}" | \
+        "${CFG_ExtTools_Metaflac}" --import-tags-from=- "${targetAudioFile}"
+    if [ ! "$?" -eq 0 ]
+    then
+        >&2 echo "ERROR: Unable to add the new FLAC tags. Operation halted."
+        [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 7 || exit 7
+    fi
+    
+else
+    [ "${VERBOSE}" ] && echo "Audio file metadata are already up to date."
+fi
+
+################################################################################
+# Updating embedded pictures
+################################################################################
+
+# Initializing variables
+updateEmbeddedPictures=0
+frontPictures=()
+backPictures=()
+
+# Searching for picture files
+for pictureBasename in "${CFG_CVCCommit_AlbumArt_Front[@]}" "${CFG_CVCCommit_AlbumArt_Back[@]}"
+do
+    # Enumerating valid picture file extensions
+    for pictureExtension in "${CFG_CVCCommit_PictureExtensions[@]}"
+    do
+        # Expected picture filename
+        pictureFile="${targetFileBasedir}/${pictureBasename}.${pictureExtension}"
+
+        # If a picture file with the expected file name is found, it must be
+        # embedded into the audio file.
+        if [ -f "${pictureFile}" ]
+        then
+            # Front picture
+            if [[ " ${CFG_CVCCommit_AlbumArt_Front[*]} " == *" ${pictureBasename} "*  ]]
+            then
+                # We add the picture file to the list of found picture files.
+                [ "${VERBOSE}" ] && echo "Album picture found (front): ${pictureBasename}.${pictureExtension}"
+                frontPictures+=("${pictureFile}")
+            
+            # Back picture
+            elif [[ " ${CFG_CVCCommit_AlbumArt_Back[*]} " == *" ${pictureBasename} "*  ]]
+            then
+                # We add the picture file to the list of found picture files.
+                [ "${VERBOSE}" ] && echo "Album picture found (back): ${pictureBasename}.${pictureExtension}"
+                backPictures+=("${pictureFile}")
+            
+            else
+                >&2 echo "ERROR: Unable to deduce the type of an album picture."
+                [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
+            fi
+            
+            # If at least one picture file is newer than the last modification 
+            # time of the audio file, the audio file needs to be updated. Since
+            # that update requires removing all embedded pictures from the file
+            # first, all available pictures will have to be reembedded. A single
+            # newer picture file is thus enough to trigger the update process.
+            if [[ "${pictureFile}" -nt "${targetAudioFile}" ]] || [ "${FORCE}" ]
+            then
+                updateEmbeddedPictures=1
+            fi
+        fi
+    done
+done
+
+# If the audio file needs to be updated, we do it here
+if [ "${updateEmbeddedPictures}" -eq 1 ]
+then
+
+    # Deleting previous embedded pictures
+    [ "${VERBOSE}" ] && echo "Removing all embedded pictures from the audio file ${targetAudioFile}..."
+    "${CFG_ExtTools_Metaflac}" --remove --block-type=PICTURE "${targetAudioFile}" > /dev/null
+    
+    # Checking removal result
+    if [ ! "$?" -eq 0 ]
+    then
+        >&2 echo "ERROR: Unable to remove embedded pictures from a FLAC file."
+        [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 8 || exit 8
+    fi
+
+    # Embedding front pictures
+    for pictureFile in "${frontPictures}"
+    do
+        [ "${VERBOSE}" ] && echo "Embedding front picture ${pictureFile} into file ${targetAudioFile}..."            
+
+        "${CFG_ExtTools_Metaflac}" --import-picture-from="3||||${pictureFile}" "${targetAudioFile}" > /dev/null
+        if [ ! "$?" -eq 0 ]
+        then
+            >&2 echo "ERROR: Unable to embed a picture into a FLAC file. Operation halted."
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 9 || exit 9
+        fi
+    done
+    
+    # Embedding back pictures
+    for pictureFile in "${backPictures}"
+    do
+        [ "${VERBOSE}" ] && echo "Embedding back picture ${pictureFile} into file ${targetAudioFile}..."            
+
+        "${CFG_ExtTools_Metaflac}" --import-picture-from="4||||${pictureFile}" "${targetAudioFile}" > /dev/null
+        if [ ! "$?" -eq 0 ]
+        then
+            >&2 echo "ERROR: Unable to embed a picture into a FLAC file. Operation halted."
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 9 || exit 9
+        fi
+    done
+else
+    [ "${VERBOSE}" ] && echo "Embedded pictures are up to date."
+fi
+

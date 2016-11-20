@@ -1,0 +1,159 @@
+#!/bin/bash
+################################################################################
+# Loading configuration
+################################################################################
+
+CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
+source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+
+################################################################################
+# Documentation
+################################################################################
+
+# Return code reference
+# 1     Syntax error in invocation
+# 2     Missing argument
+# 3     Target directory does not exist
+# 16    Internal error
+
+# Show usage
+function usage {
+    echo "This script runs cvccommit for all the audio files of a directory, thus"
+    echo "allowing to quickly create CVC files for whole albums."
+    echo ""
+    echo "Usage: cvcbulkcreate [-f] [-h] [-t <template>] [-v] <directory>"
+    echo ""
+    echo "Options:"
+    echo "-f            Overwrite current cvc file."
+    echo "-h            Show this message."
+    echo "-t <template> The name of the CVC template to use, without the .cvt extension."
+    echo "              CVC templates are used to prestage CVC files with static or"
+    echo "              dynamic content".
+    echo "-v            Verbose mode."
+    echo ""
+    echo "<directory>   A directory containing audio files."
+}
+
+################################################################################
+# Option and argument parsing
+################################################################################
+
+# Default settings
+extraArgs=""
+
+# Calling option parser
+while getopts ":fht:v" option; do
+    case "${option}" in
+        # -f: Force mode
+        f)
+            extraArgs+="-f "
+            ;;
+        
+        # -h: Help
+        h)
+            usage
+            ;;
+        
+        # -t: CVC template
+        t)
+            extraArgs+="-t ${OPTARG}"
+            ;;        
+            
+        # -v: Verbose mode
+        v)
+            VERBOSE=1
+            extraArgs+="-v "
+            ;;
+        
+        # Syntax error
+        \?)
+            >&2 echo "ERROR: Invalid option: -${OPTARG}"
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Syntax error
+        :)
+            >&2 echo "ERROR: Option -${OPTARG} requires an argument."
+            usage
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
+            ;;
+        
+        # Any other value is an internal error
+        *)
+            >&2 echo "ERROR: Internal getopts error."
+            [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
+            ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+# Checking whether a directory was supplied as an argument.
+if [ -z "$1" ]
+then
+    >&2 echo "ERROR: No directory specified."
+    usage
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 2 || exit 2
+fi
+
+################################################################################
+# Additional checks
+################################################################################
+
+# Abstracting supplied arguments. We remove the trailing /
+targetDirectory="${1%/}"
+
+# Checking whether the supplied directory does exist
+if [ ! -d "${targetDirectory}" ]
+then
+    >&2 echo "ERROR: Directory '${targetDirectory}' does not exist."
+    [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 3 || exit 3
+fi
+
+################################################################################
+# Detecting tracklist properties
+################################################################################
+
+# Detect the total number of discs, the total number of tracks per disc, 
+# and the total number of tracks.
+
+################################################################################
+# Creating CVC files
+################################################################################
+
+# Initializing file counter
+fileCount=0
+
+for audioFile in "${targetDirectory}/"*.${CFG_FileExtensions_Audio}
+do
+    ((fileCount+=1))
+    [ "${VERBOSE}" ] && echo "Processing file #${fileCount}: ${audioFile}..."
+    
+    # Setting up useful variables
+    audioFileBasename=$(basename "${audioFile}" ".${CFG_FileExtensions_Audio}")
+    
+    # Detecting disk number
+    discNumberPrefix=$(echo "${audioFileBasename}" | grep -oE "^[0-9]?[0-9]-")
+    if [ "${discNumberPrefix}" ]
+    then
+        discNumber="${discNumberPrefix%-}"
+        [ "${VERBOSE}" ] && echo "Detected disc number: ${discNumber}."
+    else
+        discNumber=1
+        [ "${VERBOSE}" ] && echo "Detected disc number: None. Assuming ${discNumber}."
+    fi
+
+    # Detecting track number
+    trackNumberPrefix=$(echo "${audioFileBasename#${discNumberPrefix}}" | grep -oE "^[0-9]?[0-9]")
+    if [ "${trackNumberPrefix}" ]
+    then
+        trackNumber="${trackNumberPrefix}"
+        [ "${VERBOSE}" ] && echo "Detected track number: ${trackNumber}."
+    else
+        [ "${VERBOSE}" ] && echo "Detected disc number: None. Assuming none."
+    fi
+    
+    # Calling cvccreate
+    "${CFG_CVCTools_CVCCreate}" ${extraArgs} "${audioFile}"
+done
