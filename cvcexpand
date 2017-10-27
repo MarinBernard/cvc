@@ -692,7 +692,9 @@ function processLine {
                     fi
                 elif [ "${values[0]}" ]
                 then
-                    echo "WARNING: Alias +RELEASEID requires exactly two arguments. Ignoring."
+                    (>&2 echo "WARNING: In file: '${targetCVCFile}':")
+                    (>&2 echo "Alias '+RELEASEID' requires exactly two arguments. The following line will be ignored:")
+                    (>&2 echo "${1}")
                 fi
 
             # +RELEASESOURCE=ReleaseSource
