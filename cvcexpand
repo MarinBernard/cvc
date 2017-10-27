@@ -16,7 +16,9 @@ declare -a CVCINTERNAL_CHOIRS
 declare -a CVCINTERNAL_CONDUCTORS
 declare -a CVCINTERNAL_FIRSTWORDS
 declare -a CVCINTERNAL_ORCHESTRAS
-declare -a CVCINTERNAL_RECORDYEAR
+declare -a CVCINTERNAL_PERFORMANCEPLACE
+declare -a CVCINTERNAL_PERFORMANCEYEAR
+declare -a CVCINTERNAL_RELEASEYEAR
 declare -a CVCINTERNAL_SLICETYPES
 declare -a CVCINTERNAL_SLICENUMBERS
 declare -a CVCINTERNAL_SLICETITLES
@@ -643,37 +645,19 @@ function processLine {
             then            
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
+                    CVCINTERNAL_PERFORMANCEYEAR+=("${values[0]:0:4}")
+                    CVCINTERNAL_PERFORMANCEPLACE+=("${values[1]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEDATE=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
                     CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEYEAR=${values[0]:0:4}")
                     CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEPLACE=${values[1]}")
                 else
-                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
+                    CVCINTERNAL_PERFORMANCEYEAR+=("${values[0]:0:4}")
                     CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEDATE=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
                     CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEYEAR=${values[0]:0:4}")
-                fi
-                
-            # +RECORDED=RecordDate|RecordPlace
-            elif [ "$alias" == "+RECORDED" ]
-            then            
-                if [ "${values[1]}" ]
-                then
-                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDDATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDYEAR=${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDPLACE=${values[1]}")
-                else
-                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDDATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("RECORDYEAR=${values[0]:0:4}")
                 fi
 
             # +RELEASECHANNEL=ReleaseChannel
@@ -682,6 +666,15 @@ function processLine {
                 if [ "${values[0]}" ]
                 then
                     CVCINTERNAL_OUTPUTBUFFER+=("RELEASECHANNEL=${values[0]}")
+                fi
+
+            # +RELEASED=ReleaseDate
+            elif [ "$alias" == "+RELEASED" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("RELEASEDATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("RELEASEYEAR=${values[0]:0:4}")
                 fi
 
             # +RELEASESOURCE=ReleaseSource
@@ -927,10 +920,10 @@ then
     done
 fi
 
-# Adding record year to the album suffix
-if [ "${CVCINTERNAL_RECORDYEAR}" ]
+# Adding performance year to the album suffix
+if [ "${CVCINTERNAL_PERFORMANCEYEAR}" ]
 then
-    CVCINTERNAL_ALBUMSUFFIX="${CVCINTERNAL_ALBUMSUFFIX%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCINTERNAL_RECORDYEAR}"
+    CVCINTERNAL_ALBUMSUFFIX="${CVCINTERNAL_ALBUMSUFFIX%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCINTERNAL_PERFORMANCEYEAR}"
 else    
     CVCINTERNAL_ALBUMSUFFIX="${CVCINTERNAL_ALBUMSUFFIX%${CFG_CVCExpand_DefaultDelimiter}}"
 fi
