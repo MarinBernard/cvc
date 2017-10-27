@@ -677,6 +677,24 @@ function processLine {
                     CVCINTERNAL_OUTPUTBUFFER+=("RELEASEYEAR=${values[0]:0:4}")
                 fi
 
+            # +RELEASEID=Id|IdType
+            elif [ "$alias" == "+RELEASEID" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    # Barcode number
+                    if [ "${values[1]^^}" == "BARCODE" ]
+                    then
+                        CVCINTERNAL_OUTPUTBUFFER+=("BARCODE=${values[1]}")
+                    # Any other catalog number
+                    else
+                        CVCINTERNAL_OUTPUTBUFFER+=("CATALOGNUMBER=${values[1]} ${values[0]}")
+                    fi
+                elif [ "${values[0]}" ]
+                then
+                    echo "WARNING: Alias +RELEASEID requires exactly two arguments. Ignoring."
+                fi
+
             # +RELEASESOURCE=ReleaseSource
             elif [ "$alias" == "+RELEASESOURCE" ]
             then            
