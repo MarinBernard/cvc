@@ -255,6 +255,12 @@ function processLine {
         then
             nextFileToInclude="${CFG_IncludePath_ORCHESTRA}/${value}.${CFG_FileExtensions_CVC}"
             [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @ORCHESTRA directive pointing towards ${nextFileToInclude}"
+
+        # @RELEASECHANNEL inclusion directive
+        elif [ "$directive" == "@RELEASECHANNEL" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_RELEASECHANNEL}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @RELEASECHANNEL directive pointing towards ${nextFileToInclude}"
             
         # @SLICE inclusion directive
         elif [ "$directive" == "@SLICE" ]
@@ -662,6 +668,14 @@ function processLine {
                     CVCINTERNAL_OUTPUTBUFFER+=("RECORDDATE=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
                     CVCINTERNAL_OUTPUTBUFFER+=("RECORDYEAR=${values[0]:0:4}")
+                fi
+
+            # +RELEASECHANNEL=ReleaseChannel
+            elif [ "$alias" == "+RELEASECHANNEL" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("RELEASECHANNEL=${values[0]}")
                 fi
             
             # +SLICENUMBER=SliceNumber
