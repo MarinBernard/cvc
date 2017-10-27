@@ -606,6 +606,25 @@ function processLine {
                     CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRA=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
                 fi
+
+            # +PERFORMED=PerformanceDate|PerformancePlace
+            elif [ "$alias" == "+PERFORMED" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEDATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEYEAR=${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEPLACE=${values[1]}")
+                else
+                    CVCINTERNAL_RECORDYEAR+=("${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEDATE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEYEAR=${values[0]:0:4}")
+                fi
                 
             # +RECORDED=RecordDate|RecordPlace
             elif [ "$alias" == "+RECORDED" ]
