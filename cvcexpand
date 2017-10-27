@@ -282,7 +282,7 @@ function processLine {
         
         # If the directive is unknown, we halt here.
         else
-            >&2 echo "ERROR: Unknown inclusion directive '${directive}' in file '${1}':"
+            >&2 echo "ERROR: Unknown inclusion directive '${directive}' in file '${targetCVCFile}':"
             >&2 echo "${line}"
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 4 || exit 4
         fi
@@ -776,7 +776,7 @@ function processLine {
 
             # If the alias is unknown, we halt here.
             else
-                >&2 echo "ERROR: Unknown alias '${alias}' in file '${1}':"
+                >&2 echo "ERROR: Unknown alias '${alias}' in file '${targetCVCFile}':"
                 >&2 echo "${line}"
                 [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 5 || exit 5
             fi
