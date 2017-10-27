@@ -579,6 +579,20 @@ function processLine {
                 then
                     CVCINTERNAL_OUTPUTBUFFER+=("LYRICS=${values[0]}")
                 fi
+
+            # +MEDIUMTYPE=ShortLabel|FullLabel
+            elif [ "$alias" == "+MEDIUMTYPE" ]
+            then            
+                if [ "${values[1]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPE=${values[1]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPESHORT=${values[0]}")
+                fi
+                elif [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPE=${values[0]}")
+                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPESHORT=${values[0]}")
+                fi
                 
             # +MUSICALERANAME=MusicalEraName
             elif [ "$alias" == "+MUSICALERANAME" ]
