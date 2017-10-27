@@ -587,7 +587,6 @@ function processLine {
                 then
                     CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPE=${values[1]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPESHORT=${values[0]}")
-                fi
                 elif [ "${values[0]}" ]
                 then
                     CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPE=${values[0]}")
