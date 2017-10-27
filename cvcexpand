@@ -237,6 +237,12 @@ function processLine {
         then
             nextFileToInclude="${CFG_IncludePath_LABEL}/${value}.${CFG_FileExtensions_CVC}"
             [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @LABEL directive pointing towards ${nextFileToInclude}"
+
+        # @MEDIUMTYPE inclusion directive
+        elif [ "$directive" == "@MEDIUMTYPE" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_MEDIUMTYPE}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @MEDIUMTYPE directive pointing towards ${nextFileToInclude}"
             
         # @MUSICALERA inclusion directive
         elif [ "$directive" == "@MUSICALERA" ]

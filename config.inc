@@ -24,6 +24,7 @@ CFG_IncludePath_COMPOSER="${CFG_IncludePath_RootPath}/composers"
 CFG_IncludePath_CONDUCTOR="${CFG_IncludePath_RootPath}/conductors"
 CFG_IncludePath_INSTRUMENT="${CFG_IncludePath_RootPath}/instruments"
 CFG_IncludePath_LABEL="${CFG_IncludePath_RootPath}/labels"
+CFG_IncludePath_MEDIUMTYPE="${CFG_IncludePath_RootPath}/mediumtypes"
 CFG_IncludePath_MUSICALERA="${CFG_IncludePath_RootPath}/musicaleras"
 CFG_IncludePath_ORCHESTRA="${CFG_IncludePath_RootPath}/orchestras"
 CFG_IncludePath_SLICE="${CFG_IncludePath_RootPath}/slices"
@@ -80,4 +81,3 @@ CFG_CVCCommit_PictureExtensions=("jpg" "png")
 # List of valid base names for album art picture files.
 CFG_CVCCommit_AlbumArt_Front=("cover" "front")
 CFG_CVCCommit_AlbumArt_Back=("back")
-
