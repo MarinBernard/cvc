@@ -684,6 +684,14 @@ function processLine {
                 then
                     CVCINTERNAL_OUTPUTBUFFER+=("RELEASESOURCE=${values[0]}")
                 fi
+
+            # +RELEASEURL=UrlDescribingTheRelease
+            elif [ "$alias" == "+RELEASEURL" ]
+            then            
+                if [ "${values[0]}" ]
+                then
+                    CVCINTERNAL_OUTPUTBUFFER+=("URL=${values[0]}")
+                fi
             
             # +SLICENUMBER=SliceNumber
             elif [ "$alias" == "+SLICENUMBER" ]
