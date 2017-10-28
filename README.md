@@ -1,5 +1,7 @@
 # CVC Language reference
-## Inclusions
+
+
+## Inclusion directives
 
 The current version of Cascaded Vorbis Comments supports the following inclusion
 directives:
@@ -50,6 +52,13 @@ merged without overwriting the original label name.
 
 Example: `@LABEL=Deutsche Grammophon`
 
+### The @MEDIUMTYPE inclusion directive
+This directive allows to include a CVC file from the
+`CFG_IncludePath_MEDIUMTYPE` directory. Those files describe types of audio
+media.
+
+Example: `@MEDIUMTYPE=CDDA`
+
 ### The @MUSICALERA inclusion directive
 This directive allows to include a CVC file from the
 `CFG_IncludePath_MUSICALERA` directory. Those files describe musical eras.
@@ -65,6 +74,21 @@ ensembles. They are named after their international name, without accents
 or diacritics.
 
 Example: `@ORCHESTRA=Berliner Philharmoniker`
+
+### The @RELEASECHANNEL inclusion directive
+This directive allows to include a CVC file from the
+`CFG_IncludePath_RELEASECHANNEL` directory. Those files describe channels
+of diffusion for audio releases.
+
+Example: `@RELEASECHANNEL=Retail`
+
+### The @RELEASESOURCE inclusion directive
+This directive allows to include a CVC file from the
+`CFG_IncludePath_RELEASESOURCE` directory. Those files describe the source
+of the audio material included in a release.
+
+Example: `@RELEASESOURCE=Live recording`
+
 
 ### The @SLICE inclusion directive
 This directive allows to include a CVC file from the `CFG_IncludePath_SLICE`
