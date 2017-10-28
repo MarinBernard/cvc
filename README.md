@@ -177,14 +177,17 @@ Example: `@WORKTYPE=Cantata`
 
 ### The +CHARACTER alias
 #### Description
-The `+CHARACTER` alias allows to describes a character within a dramatic work
-such as an opera. You may specify both the full and short names of the
-character.
+The `+CHARACTER` alias allows to describe a character within a dramatic work
+such as an opera. The resulting Vorbis Comments will be used to generate
+lists of character names included into track titles.
 #### Usage
-The alias may be used with 1 or 2 parameters. The first parameter is
-mandatory and defines the full name of a character. The second parameter is
-mandatory, and defines the short form of a character's name.
-### Rendering with 1 parameter
+```
++CHARACTER=<FullName>|<ShortName>
+```
+The alias may be used with 1 or 2 parameters:
+1. `<FullName>` (mandatory) defines the full name of a character.
+2. `<ShortName>` (optional) defines the short form of a character's name.
+#### Rendering with 1 parameter
 ```
 +CHARACTER=<FullName>
 ```
@@ -192,7 +195,7 @@ Becomes:
 ```
 CHARACTER=<FullName>
 ```
-### Rendering with 2 parameters
+#### Rendering with 2 parameters
 ```
 +CHARACTER=<FullName>|<ShortName>
 ```
@@ -200,4 +203,49 @@ Becomes:
 ```
 CHARACTER=<FullName>
 CHARACTERSHORT=<ShortName>
+```
+
+### The +CHOIRNAME alias
+#### Description
+The `+CHOIRNAME` alias allows to describe a vocal ensemble such as a choir.
+#### Usage
+```
++CHOIRNAME=<FullName>|<SortName>|<ShortName>
+```
+The alias may be used with 1 or 2 parameters:
+1. `<FullName>` (mandatory) defines the full name of a choir.
+2. `<SortName>` (optional) defines the sort-friendly form of a choir's name.
+3. `<ShortName>` (optional) defines the short form of a choir's name.
+#### Rendering with 1 parameter
+```
++CHOIRNAME=<FullName>
+```
+Becomes:
+```
+ENSEMBLE=<FullName>
+ARTIST=<FullName>
+```
+#### Rendering with 2 parameters
+```
++CHOIRNAME=<FullName>|<SortName>
+```
+Becomes:
+```
+ENSEMBLE=<FullName>
+ENSEMBLESORT=<SortName>
+ARTIST=<FullName>
+ARTISTSORT=<SortName>
+```
+#### Rendering with 3 parameters
+```
++CHOIRNAME=<FullName>|<SortName>|<ShortName>
+```
+Becomes:
+```
+ENSEMBLE=<FullName>
+ENSEMBLESORT=<SortName>
+ENSEMBLESHORT=<ShortName>
+ARTIST=<FullName>
+ARTISTSORT=<SortName>
+ARTISTSHORT=<ShortName>
 ```
