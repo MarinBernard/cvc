@@ -18,7 +18,7 @@ CFG_CVCTools_CVCExpand="${CFG_CVCTools_RootPath}/cvcexpand"
 CFG_CVCTemplatesPath="${CFG_CVCTools_RootPath}/templates"
 
 # Paths to includable entities
-CFG_IncludePath_RootPath="${CFG_CVCTools_RootPath}/datastore"
+CFG_IncludePath_RootPath="${CFG_CVCTools_RootPath}/../cvc-datastore"
 CFG_IncludePath_CHOIR="${CFG_IncludePath_RootPath}/choirs"
 CFG_IncludePath_COMPOSER="${CFG_IncludePath_RootPath}/composers"
 CFG_IncludePath_CONDUCTOR="${CFG_IncludePath_RootPath}/conductors"
