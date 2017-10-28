@@ -121,8 +121,8 @@ fi
 # Generating related filenames
 targetFileBasename=$(basename "$1" .${CFG_FileExtensions_CVC})
 targetFileBasedir=$(dirname "${targetCVCFile}")
-targetAudioFile="${targetFileBasename}.${CFG_FileExtensions_Audio}"
-targetTagsFile="${targetFileBasename}.${CFG_FileExtensions_Tags}"
+targetAudioFile="${targetFileBasedir}/${targetFileBasename}.${CFG_FileExtensions_Audio}"
+targetTagsFile="${targetFileBasedir}/${targetFileBasename}.${CFG_FileExtensions_Tags}"
 
 # If the supplied CVC filename is in the ignore list, we escape here.
 for ignoredFilename in "${CFG_CVCCommit_IgnoredFilenames[@]}"; do

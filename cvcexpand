@@ -617,7 +617,7 @@ function processLine {
                 
             # +ORCHESTRANAME=Fullname|Sortname|Shortname
             elif [ "$alias" == "+ORCHESTRANAME" ]
-            then            
+            then
                 if [ "${values[2]}" ]
                 then
                     CVCINTERNAL_ORCHESTRAS+=("${values[2]}")
