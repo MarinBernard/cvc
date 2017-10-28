@@ -172,3 +172,32 @@ directory. Those files describe types of works. They are named after their
 English name, without accents nor diacritics.
 
 Example: `@WORKTYPE=Cantata`
+
+## Aliases
+
+### The +CHARACTER alias
+#### Description
+The `+CHARACTER` alias allows to describes a character within a dramatic work
+such as an opera. You may specify both the full and short names of the
+character.
+#### Usage
+The alias may be used with 1 or 2 parameters. The first parameter is
+mandatory and defines the full name of a character. The second parameter is
+mandatory, and defines the short form of a character's name.
+### Rendering with 1 parameter
+```
++CHARACTER=<FullName>
+```
+Becomes:
+```
+CHARACTER=<FullName>
+```
+### Rendering with 2 parameters
+```
++CHARACTER=<FullName>|<ShortName>
+```
+Becomes:
+```
+CHARACTER=<FullName>
+CHARACTERSHORT=<ShortName>
+```
