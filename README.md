@@ -187,6 +187,7 @@ lists of character names included into track titles.
 The alias may be used with 1 or 2 parameters:
 1. `<FullName>` (mandatory) defines the full name of a character.
 2. `<ShortName>` (optional) defines the short form of a character's name.
+The alias may be specified several times to register several characters.
 #### Rendering with 1 parameter
 ```
 +CHARACTER=<FullName>
@@ -207,7 +208,7 @@ CHARACTERSHORT=<ShortName>
 
 ### The +CHOIRNAME alias
 #### Description
-The `+CHOIRNAME` alias allows to describe a vocal ensemble such as a choir.
+The `+CHOIRNAME` alias allows to specify the name of a vocal ensemble.
 #### Usage
 ```
 +CHOIRNAME=<FullName>|<SortName>|<ShortName>
@@ -216,6 +217,7 @@ The alias may be used with 1 or 2 parameters:
 1. `<FullName>` (mandatory) defines the full name of a choir.
 2. `<SortName>` (optional) defines the sort-friendly form of a choir's name.
 3. `<ShortName>` (optional) defines the short form of a choir's name.
+The alias may be specified several times to register several choirs.
 #### Rendering with 1 parameter
 ```
 +CHOIRNAME=<FullName>
@@ -248,4 +250,56 @@ ENSEMBLESHORT=<ShortName>
 ARTIST=<FullName>
 ARTISTSORT=<SortName>
 ARTISTSHORT=<ShortName>
+```
+
+### The +COMPOSERNAME alias
+#### Description
+The `+COMPOSERNAME` alias allows to specify the name of a music composer.
+#### Usage
+```
++COMPOSERNAME=<FullName>|<SortName>|<ShortName>
+```
+The alias may be used with 1 or 2 parameters:
+1. `<FullName>` (mandatory) defines the full name of a composer.
+2. `<SortName>` (optional) defines the sort-friendly form of a composer's name.
+3. `<ShortName>` (optional) defines the short form of a composer's name.
+The alias may be specified multiples times to register several composers.
+#### Rendering with 1 parameter
+```
++COMPOSERNAME=<FullName>
+```
+Becomes:
+```
+COMPOSER=<FullName>
+ALBUM_ARTIST=<FullName>
+ALBUMARTIST=<FullName>
+ALBUM ARTIST=<FullName>
+```
+#### Rendering with 2 parameters
+```
++COMPOSERNAME=<FullName>|<SortName>
+```
+Becomes:
+```
+COMPOSER=<FullName>
+COMPOSERSORT=<SortName>
+ALBUMARTISTSORT=<SortName>
+ALBUM_ARTIST=<FullName>
+ALBUMARTIST=<FullName>
+ALBUM ARTIST=<FullName>
+```
+#### Rendering with 3 parameters
+```
++COMPOSERNAME=<FullName>|<SortName>|<ShortName>
+```
+Becomes:
+```
+COMPOSER=<FullName>
+COMPOSERSHORT=<ShortName>
+COMPOSERSORT=<SortName>
+ALBUMARTISTSHORT=<ShortName>
+ALBUMARTISTSORT=<SortName>
+ALBUM_ARTIST=<FullName>
+ALBUMARTIST=<FullName>
+ALBUM ARTIST=<FullName>
 ```

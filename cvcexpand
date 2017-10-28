@@ -442,7 +442,7 @@ function processLine {
                     CVCINTERNAL_OUTPUTBUFFER+=("COMPOSER=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSORT=${values[1]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSHORT=${values[2]}")                    
+                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSHORT=${values[2]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSORT=${values[1]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("ALBUM_ARTIST=${values[0]}")
                     CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTIST=${values[0]}")
