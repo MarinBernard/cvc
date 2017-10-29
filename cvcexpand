@@ -24,6 +24,7 @@ declare -a CVCData_SliceTypes
 declare -a CVCData_SliceNumbers
 declare -a CVCData_SliceTitles
 declare -a CVCData_Soloists
+declare -a CVCData_WorkIds
 declare -a CVCData_WorkTitle
 declare -a CVCData_WorkTitleSort
 
@@ -825,8 +826,10 @@ function processLine {
             then
                 if [ "${values[1]}" ]
                 then
+                    CVCData_WorkIds+=("${values[1]} ${values[0]}")
                     CVC_OutputBuffer+=("CATALOGID=${values[1]} ${values[0]}")
                 else
+                    CVCData_WorkIds+=("${values[0]}")
                     CVC_OutputBuffer+=("CATALOGID=${values[0]}")
                 fi
 
@@ -922,13 +925,13 @@ function cvc::processFile {
 # Format: WorkTitle (Orchestras/Choirs/Conductors/Soloists, Year)
 function cvc::makeDynamicAlbumTitle {
     # Initiating variables
-    local _album_suffix=""
+    local _albumSuffix
 
     # Adding orchestras to the album suffix
     if [ ! "${CVCData_Orchestras}" == "" ]
     then
         for orchestra in "${CVCData_Orchestras[@]}"; do
-            _album_suffix+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
+            _albumSuffix+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
 
@@ -936,7 +939,7 @@ function cvc::makeDynamicAlbumTitle {
     if [ ! "${CVCData_Choirs}" == "" ]
     then
         for choir in "${CVCData_Choirs[@]}"; do
-            _album_suffix+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
+            _albumSuffix+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
 
@@ -944,7 +947,7 @@ function cvc::makeDynamicAlbumTitle {
     if [ ! "${CVCData_Soloists}" == "" ] && [ "${#CVCData_Soloists[@]}" -lt 3 ]
     then
         for soloist in "${CVCData_Soloists[@]}"; do
-            _album_suffix+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
+            _albumSuffix+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
 
@@ -952,27 +955,43 @@ function cvc::makeDynamicAlbumTitle {
     if [ ! "${CVCData_Conductors}" == "" ]
     then
         for conductor in "${CVCData_Conductors[@]}"; do
-            _album_suffix+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
+            _albumSuffix+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
+
+    # Remove trailing delimiter
+    _albumSuffix="${_albumSuffix%${CFG_CVCExpand_DefaultDelimiter}}"
 
     # Adding performance year to the album suffix
     if [ "${CVCData_PerformanceYear}" ]
     then
-        _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCData_PerformanceYear}"
-    else
-        _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}"
+        _albumSuffix+=", ${CVCData_PerformanceYear}"
     fi
 
+    # Add parenthesis around the album suffix
+    _albumSuffix=" (${_albumSuffix})"
+
+    # Building the list of work IDs
+    local _workIds
+    if [ ! "${CVCData_WorkIds}" == "" ]
+    then
+        for _workId in "${CVCData_WorkIds[@]}"; do
+            _workIds+="${_workId}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+    fi
+    _workIds=" (${_workIds%${CFG_CVCExpand_DefaultDelimiter}})"
+
+    # Adding album title to the output buffer
     if [ ! "${CVCData_WorkTitle}" == "" ]
     then
-        CVC_OutputBuffer+=("ALBUM=${CVCData_WorkTitle} (${_album_suffix})")
-        CVC_OutputBuffer+=("ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})")
+        local _albumTitle="${CVCData_WorkTitle}${_workIds}${_albumSuffix}"
+        CVC_OutputBuffer+=("ALBUM=${_albumTitle}")
+        CVC_OutputBuffer+=("ALBUMTITLE=${_albumTitle}")
     fi
-
     if [ ! "${CVCData_WorkTitleSort}" == "" ]
     then
-        CVC_OutputBuffer+=("ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})")
+        local _albumTitleSort="${CVCData_WorkTitleSort}${_workIds}${_albumSuffix}"
+        CVC_OutputBuffer+=("ALBUMSORT=${_albumTitleSort}")
     fi
 }
 
