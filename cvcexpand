@@ -964,13 +964,13 @@ function cvc::getDynamicAlbumTitle {
 
     if [ ! "${CVCData_WorkTitle}" == "" ]
     then
-        echo ("ALBUM=${CVCData_WorkTitle} (${_album_suffix})")
-        echo ("ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})")
+        echo "ALBUM=${CVCData_WorkTitle} (${_album_suffix})"
+        echo "ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})"
     fi
 
     if [ ! "${CVCData_WorkTitleSort}" == "" ]
     then
-        echo ("ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})")
+        echo "ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})"
     fi
 }
 
