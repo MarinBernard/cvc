@@ -41,7 +41,7 @@ function usage {
 extraArgs=""
 
 # Calling option parser
-while getopts ":fhv" option; do
+while getopts ":fhl:v" option; do
     case "${option}" in
         # -f: Force mode
         f)
