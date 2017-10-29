@@ -907,13 +907,6 @@ function cvc::processFile {
 }
 
 ################################################################################
-# Main entry point
-################################################################################
-
-cvc::processFile "${targetCVCFile}"
-CVC_OutputBuffer+=$(cvc::getDynamicAlbumTitle)
-
-################################################################################
 # Generating ALBUM and ALBUMTITLE
 ################################################################################
 
@@ -973,6 +966,13 @@ function cvc::getDynamicAlbumTitle {
         echo "ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})"
     fi
 }
+
+################################################################################
+# Main entry point
+################################################################################
+
+cvc::processFile "${targetCVCFile}"
+CVC_OutputBuffer+=$(cvc::getDynamicAlbumTitle)
 
 ################################################################################
 # Generating TITLE and TRACKTITLE
