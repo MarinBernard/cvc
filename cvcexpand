@@ -69,37 +69,37 @@ OPT_TargetLanguage="${CFG_CVCExpand_DefaultLanguage}"
 
 # Calling option parser
 while getopts ":hl:v" option; do
-    case "${option}" in        
+    case "${option}" in
         # -h: Help
         h)
             usage
             exit
             ;;
-            
+
         # -l: Language
         l)
             OPT_TargetLanguage="${OPTARG}"
             ;;
-            
+
         # -v: Verbose mode
         v)
             OPT_Verbose=1
             ;;
-        
+
         # Syntax error
         \?)
             >&2 echo "ERROR: Invalid option: -${OPTARG}"
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Syntax error
         :)
             >&2 echo "ERROR: Option -${OPTARG} requires an argument."
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Any other value is an internal error
         *)
             >&2 echo "ERROR: Internal getopts error."
@@ -147,17 +147,17 @@ function cvc::substituteConstants {
         >&2 echo "ERROR: Internal error: Bad substitution call."
         [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
     fi
-    
+
     value="${1}"
-    
+
     # Extracting symbols
     matches=($(echo "${value}" | grep -oP '\{\{.*?\}\}'))
-    
+
     # Performing substitution
     for match in "${matches[@]}"; do
         constantName="${match#\{\{}"
         constantName="${constantName%\}\}}"
-        
+
         if [ "${CVC_Constants[$constantName]}" ]
         then
             [ "${OPT_Verbose}" ] && >&2 echo "Retrieving constant '${constantName}'"
@@ -168,9 +168,9 @@ function cvc::substituteConstants {
             >&2 echo "Unknown constant: '${constantName}'"
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 11 || exit 11
         fi
-        
+
     done
-    
+
     # Returning the result
     echo "${value}"
 }
@@ -186,14 +186,14 @@ function processLine {
     #---------------------------------------------------------------------------
     if [[ "${line}" =~ ^@.* ]] && [[ $line == *"="* ]]
     then
-    
+
         # Generating directive properties
         directive=${line%*=*}
         value=${line#$directive=}
-        
+
         # Performing constant subtitution
         value=$(cvc::substituteConstants "${value}")
-    
+
         # Generic @INCLUDE inclusion directive
         if [ "$directive" == "@INCLUDE" ]
         then
@@ -205,7 +205,7 @@ function processLine {
                 local currentFileDirname=$(dirname "${currentFile}")
                 nextFileToInclude="${currentFileDirname}/${value}.${CFG_FileExtensions_CVC}"
             fi
-            
+
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found an @INCLUDE directive for file ${nextFileToInclude}"
 
         # @CHOIR inclusion directive
@@ -219,19 +219,25 @@ function processLine {
         then
             nextFileToInclude="${CFG_IncludePath_COMPOSER}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @COMPOSER directive pointing towards ${nextFileToInclude}"
-            
+
         # @CONDUCTOR inclusion directive
         elif [ "$directive" == "@CONDUCTOR" ]
         then
             nextFileToInclude="${CFG_IncludePath_CONDUCTOR}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @CONDUCTOR directive pointing towards ${nextFileToInclude}"
-            
+
+        # @CONSTANTS inclusion directive
+        elif [ "$directive" == "@CONSTANTS" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_CONSTANTS}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @CONSTANTS directive pointing towards ${nextFileToInclude}"
+
         # @INSTRUMENT inclusion directive
         elif [ "$directive" == "@INSTRUMENT" ]
         then
             nextFileToInclude="${CFG_IncludePath_INSTRUMENT}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @INSTRUMENT directive pointing towards ${nextFileToInclude}"
-            
+
         # @LABEL inclusion directive
         elif [ "$directive" == "@LABEL" ]
         then
@@ -243,13 +249,13 @@ function processLine {
         then
             nextFileToInclude="${CFG_IncludePath_MEDIUMTYPE}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @MEDIUMTYPE directive pointing towards ${nextFileToInclude}"
-            
+
         # @MUSICALERA inclusion directive
         elif [ "$directive" == "@MUSICALERA" ]
         then
             nextFileToInclude="${CFG_IncludePath_MUSICALERA}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @MUSICALERA directive pointing towards ${nextFileToInclude}"
-        
+
         # @ORCHESTRA inclusion directive
         elif [ "$directive" == "@ORCHESTRA" ]
         then
@@ -261,7 +267,7 @@ function processLine {
         then
             nextFileToInclude="${CFG_IncludePath_RELEASECHANNEL}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @RELEASECHANNEL directive pointing towards ${nextFileToInclude}"
-        
+
         # @RELEASESOURCE inclusion directive
         elif [ "$directive" == "@RELEASESOURCE" ]
         then
@@ -279,13 +285,13 @@ function processLine {
         then
             nextFileToInclude="${CFG_IncludePath_SLICETYPE}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @SLICETYPE directive pointing towards ${nextFileToInclude}"
-            
+
         # @SOLOIST inclusion directive
         elif [ "$directive" == "@SOLOIST" ]
         then
             nextFileToInclude="${CFG_IncludePath_SOLOIST}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @SOLOIST directive pointing towards ${nextFileToInclude}"
-        
+
         # @WORK inclusion directive
         elif [ "$directive" == "@WORK" ]
         then
@@ -297,31 +303,31 @@ function processLine {
         then
             nextFileToInclude="${CFG_IncludePath_WORKTYPE}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @WORKTYPE directive pointing towards ${nextFileToInclude}"
-        
+
         # If the directive is unknown, we halt here.
         else
             >&2 echo "ERROR: Unknown inclusion directive '${directive}' in file '${targetCVCFile}':"
             >&2 echo "${line}"
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 4 || exit 4
         fi
-        
+
         # Recursive call
         [ "${OPT_Verbose}" ] && >&2 echo "ACTION: Including file ${nextFileToInclude}"
         cvc::processFile "${nextFileToInclude}"
         [ "${OPT_Verbose}" ] && >&2 echo "INFO: Back to file ${currentFile}"
-    
+
     #---------------------------------------------------------------------------
     # Else, if the line is a constant, we need to store it.
     #---------------------------------------------------------------------------
     elif [[ "${line}" =~ ^!.* ]] && [[ $line == *"="* ]]
     then
-    
+
         # Generating constant properties
         fullConstant=${line%*=*}
         constant=${fullConstant%*:*}
         value=${line#$fullConstant=}
         constantUID=${constant#!}
-        
+
         # Extracting constant language, if any
         if [[ $fullConstant == *":"* ]]
         then
@@ -329,10 +335,10 @@ function processLine {
         else
             constantLanguage=""
         fi
-        
+
         # We process the constant by default
         processConstant=1
-        
+
         # We only process the constant if it is relevant to the target language
         if [ "${OPT_TargetLanguage}" ]
         then
@@ -342,31 +348,31 @@ function processLine {
                 processConstant=0
             fi
         fi
-        
+
         # Storing the constant
         if [ $processConstant -eq 1 ]
         then
             [ "${OPT_Verbose}" ] && >&2 echo "ACTION: Storing constant '${constantUID}' = '${value}'"
             CVC_Constants["${constantUID}"]="${value}"
         fi
-    
+
     #---------------------------------------------------------------------------
     # Else, if the line is an alias, we need to convert it to regular tags.
     #---------------------------------------------------------------------------
     elif [[ "${line}" =~ ^\+.* ]] && [[ $line == *"="* ]]
     then
-    
+
         # Generating alias properties
         fullAlias=${line%*=*}
         alias=${fullAlias%*:*}
         value=${line#$fullAlias=}
-        
+
         # Performing constant subtitution
         value=$(cvc::substituteConstants "${value}")
-        
+
         # Extracting subvalues
         IFS="|" read -ra values <<< $value
-        
+
         # Extracting alias language
         if [[ $fullAlias == *":"* ]]
         then
@@ -374,10 +380,10 @@ function processLine {
         else
             aliasLanguage=""
         fi
-        
+
         # We process the alias by default
         processAlias=1
-        
+
         # We only process the alias if it is relevant to the target language
         if [ "${OPT_TargetLanguage}" ]
         then
@@ -387,29 +393,29 @@ function processLine {
                 processAlias=0
             fi
         fi
-        
+
         if [ "${processAlias}" -eq 1 ]
         then
-        
+
             # +ALBUM --> Dynamically generated
-        
+
             # +CHARACTER=FullName|ShortName
             if [ "$alias" == "+CHARACTER" ]
-            then    
+            then
                 if [ "${values[1]}" ]
                 then
                     CVCData_Characters+=("${values[1]}")
                     CVC_OutputBuffer+=("CHARACTER=${values[0]}")
-                    CVC_OutputBuffer+=("CHARACTERSHORT=${values[1]}")      
+                    CVC_OutputBuffer+=("CHARACTERSHORT=${values[1]}")
                 elif [ "${values[0]}" ]
                 then
                     CVCData_Characters+=("${values[0]}")
                     CVC_OutputBuffer+=("CHARACTER=${values[0]}")
                 fi
-        
+
             # +CHOIRNAME=Fullname|Sortname|Shortname
             elif [ "$alias" == "+CHOIRNAME" ]
-            then            
+            then
                 if [ "${values[2]}" ]
                 then
                     CVCData_Choirs+=("${values[2]}")
@@ -431,7 +437,7 @@ function processLine {
                     CVC_OutputBuffer+=("ENSEMBLE=${values[0]}")
                     CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
-        
+
             # +COMPOSERNAME=Fullname|Sortname|Shortname
             elif [ "$alias" == "+COMPOSERNAME" ]
             then
@@ -459,10 +465,10 @@ function processLine {
                     CVC_OutputBuffer+=("ALBUMARTIST=${values[0]}")
                     CVC_OutputBuffer+=("ALBUM ARTIST=${values[0]}")
                 fi
-            
+
             # +CONDUCTORNAME=Fullname|Sortname|Shortname
             elif [ "$alias" == "+CONDUCTORNAME" ]
-            then            
+            then
                 if [ "${values[2]}" ]
                 then
                     CVCData_Conductors+=("${values[2]}")
@@ -484,10 +490,10 @@ function processLine {
                     CVC_OutputBuffer+=("CONDUCTOR=${values[0]}")
                     CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
-                
+
             # +DISCNUMBER=Discnumber|Totaldiscs
             elif [ "$alias" == "+DISCNUMBER" ]
-            then            
+            then
                 if [ "${values[1]}" ]
                 then
                     CVC_OutputBuffer+=("DISC=${values[0]}/${values[1]}")
@@ -500,24 +506,24 @@ function processLine {
                     CVC_OutputBuffer+=("DISCNUM=${values[0]}")
                     CVC_OutputBuffer+=("DISCNUMBER=${values[0]}")
                 fi
-            
+
             # +FIRSTWORDS=FirstWords
             elif [ "$alias" == "+FIRSTWORDS" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVCData_Incipits+=("${values[0]}")
                     CVC_OutputBuffer+=("FIRSTWORDS=${values[0]}")
                 fi
-                
+
             # +INSTRUMENT=InstrumentName
             elif [ "$alias" == "+INSTRUMENT" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("INSTRUMENT=${values[0]}")
                 fi
-            
+
             # +INSTRUMENTALIST=Fullname|Sortname|Shortname|Instrument
             elif [ "$alias" == "+INSTRUMENTALIST" ]
             then
@@ -556,10 +562,10 @@ function processLine {
                     CVC_OutputBuffer+=("PERFORMER=${values[0]}")
                     CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
-                
+
             # +KEY=MainKey|OpeningKey|ClosingKey
             elif [ "$alias" == "+KEY" ]
-            then       
+            then
                 if [ "${values[2]}" ]
                 then
                     CVC_OutputBuffer+=("CLOSINGKEY=${values[2]}")
@@ -575,18 +581,18 @@ function processLine {
                     CVC_OutputBuffer+=("KEY=${values[0]}")
                     CVC_OutputBuffer+=("MAINKEY=${values[0]}")
                 fi
-            
+
             # +LABELNAME=LabelName
             elif [ "$alias" == "+LABELNAME" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("LABEL=${values[0]}")
                 fi
-            
+
             # +LYRICS=Lyrics
             elif [ "$alias" == "+LYRICS" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("LYRICS=${values[0]}")
@@ -594,7 +600,7 @@ function processLine {
 
             # +MEDIUMTYPE=ShortLabel|FullLabel
             elif [ "$alias" == "+MEDIUMTYPE" ]
-            then            
+            then
                 if [ "${values[1]}" ]
                 then
                     CVC_OutputBuffer+=("MEDIUMTYPE=${values[1]}")
@@ -604,15 +610,15 @@ function processLine {
                     CVC_OutputBuffer+=("MEDIUMTYPE=${values[0]}")
                     CVC_OutputBuffer+=("MEDIUMTYPESHORT=${values[0]}")
                 fi
-                
+
             # +MUSICALERANAME=MusicalEraName
             elif [ "$alias" == "+MUSICALERANAME" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("GENRE=${values[0]}")
                 fi
-                
+
             # +ORCHESTRANAME=Fullname|Sortname|Shortname
             elif [ "$alias" == "+ORCHESTRANAME" ]
             then
@@ -640,7 +646,7 @@ function processLine {
 
             # +PERFORMED=PerformanceDate|PerformancePlace
             elif [ "$alias" == "+PERFORMED" ]
-            then            
+            then
                 if [ "${values[1]}" ]
                 then
                     CVCData_PerformanceYear+=("${values[0]:0:4}")
@@ -660,7 +666,7 @@ function processLine {
 
             # +RELEASECHANNEL=ReleaseChannel
             elif [ "$alias" == "+RELEASECHANNEL" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("RELEASECHANNEL=${values[0]}")
@@ -668,7 +674,7 @@ function processLine {
 
             # +RELEASED=ReleaseDate
             elif [ "$alias" == "+RELEASED" ]
-            then            
+            then
                 if [ "${values[1]}" ]
                 then
                     CVC_OutputBuffer+=("RELEASEDATE=${values[0]}")
@@ -677,7 +683,7 @@ function processLine {
 
             # +RELEASEID=Id|IdType
             elif [ "$alias" == "+RELEASEID" ]
-            then            
+            then
                 if [ "${values[1]}" ]
                 then
                     # Barcode number
@@ -697,7 +703,7 @@ function processLine {
 
             # +RELEASESOURCE=ReleaseSource
             elif [ "$alias" == "+RELEASESOURCE" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("RELEASESOURCE=${values[0]}")
@@ -705,24 +711,24 @@ function processLine {
 
             # +RELEASEURL=UrlDescribingTheRelease
             elif [ "$alias" == "+RELEASEURL" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("URL=${values[0]}")
                 fi
-            
+
             # +SLICENUMBER=SliceNumber
             elif [ "$alias" == "+SLICENUMBER" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVCData_SliceNumbers+=("${values[0]}")
                     CVC_OutputBuffer+=("SLICENUMBER=${values[0]}")
                 fi
-            
+
             # +SLICETITLE=FullTitle|SortTitle|ShortTitle
             elif [ "$alias" == "+SLICETITLE" ]
-            then            
+            then
                 if [ "${values[2]}" ]
                 then
                     CVCData_SliceTitles+=("${values[0]}")
@@ -742,14 +748,14 @@ function processLine {
 
             # +SLICETYPE=SLICETYPE
             elif [ "$alias" == "+SLICETYPE" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVCData_SliceTypes+=("${values[0]}")
                     CVC_OutputBuffer+=("SLICETYPE=${values[0]}")
                     CVC_OutputBuffer+=("GENRE=${values[0]}")
                 fi
-            
+
             # +SOLOISTNAME=Fullname|Sortname|Shortname|Instrument
             elif [ "$alias" == "+SOLOISTNAME" ]
             then
@@ -792,10 +798,10 @@ function processLine {
                     CVC_OutputBuffer+=("PERFORMER=${values[0]}")
                     CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
-                
+
             # +TRACKNUMBER=Tracknumber|Totaltracks
             elif [ "$alias" == "+TRACKNUMBER" ]
-            then            
+            then
                 if [ "${values[1]}" ]
                 then
                     CVC_OutputBuffer+=("TRACK=${values[0]}/${values[1]}")
@@ -808,30 +814,30 @@ function processLine {
                     CVC_OutputBuffer+=("TRACKNUM=${values[0]}")
                     CVC_OutputBuffer+=("TRACKNUMBER=${values[0]}")
                 fi
-            
+
             # +TRACKTITLE --> Dynamically generated
-            
+
             # +WORKID=Cataloguenumber|Cataloguename
             elif [ "$alias" == "+WORKID" ]
-            then            
+            then
                 if [ "${values[1]}" ]
                 then
                     CVC_OutputBuffer+=("CATALOGID=${values[1]} ${values[0]}")
                 else
                     CVC_OutputBuffer+=("CATALOGID=${values[0]}")
                 fi
-                
+
             # +WORKSUBTITLE=Subtitle
             elif [ "$alias" == "+WORKSUBTITLE" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("WORKSUBTITLE=${values[0]}")
                 fi
-            
+
             # +WORKTITLE=Fulltitle|Sorttitle|Shorttitle
             elif [ "$alias" == "+WORKTITLE" ]
-            then            
+            then
                 if [ "${values[2]}" ]
                 then
                     CVCData_WorkTitle+=("${values[0]}")
@@ -849,10 +855,10 @@ function processLine {
                     CVCData_WorkTitle+=("${values[0]}")
                     CVC_OutputBuffer+=("WORKTITLE=${values[0]}")
                 fi
-            
+
             # +WORKTYPE=WorkType
             elif [ "$alias" == "+WORKTYPE" ]
-            then            
+            then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("WORKTYPE=${values[0]}")
@@ -866,7 +872,7 @@ function processLine {
                 [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 5 || exit 5
             fi
         fi
-    
+
     #---------------------------------------------------------------------------
     # If the line is blank or a commentary, we just ignore it.
     #---------------------------------------------------------------------------
@@ -880,14 +886,14 @@ function processLine {
     elif [[ "${line}" =~ ^\..* ]]
     then
         :
-    
+
     #---------------------------------------------------------------------------
     # Else, if the line is valid, we just output it as is.
     #---------------------------------------------------------------------------
     elif [[ "${line}" == *"="* ]]
     then
         CVC_OutputBuffer+=("$line")
-        
+
     else
         >&2 echo "ERROR: Invalid line in file '${targetCVCFile}':"
         >&2 echo "${line}"
@@ -899,7 +905,7 @@ function cvc::processFile {
 
     # The currentFile variable needs to survive recursive calls.
     local currentFile="${1}"
-    
+
     # Processing lines.
     while IFS='' read -r line || [[ -n "$line" ]]; do
         processLine "${line}"
@@ -951,7 +957,7 @@ function cvc::makeDynamicAlbumTitle {
     if [ "${CVCData_PerformanceYear}" ]
     then
         _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCData_PerformanceYear}"
-    else    
+    else
         _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}"
     fi
 
@@ -1000,10 +1006,10 @@ function cvc::makeDynamicTrackTitle {
     then
         # We keep a trace of the characters we already shew to avoid duplicates.
         characterLog=()
-        
+
         # Characters are shown between braces
         _trackTitle+="("
-        
+
         for character in "${CVCData_Characters[@]}"; do
             # Checking whether the current character was already shown
             skip=0
@@ -1013,7 +1019,7 @@ function cvc::makeDynamicTrackTitle {
                     skip=1
                 fi
             done
-        
+
             # Showing character
             if [ ${skip} -eq 0 ]
             then
@@ -1021,7 +1027,7 @@ function cvc::makeDynamicTrackTitle {
                 _trackTitle+="${character}${CFG_CVCExpand_DefaultDelimiter}"
             fi
         done
-        
+
         # Closing braces
         _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}}) "
     fi
@@ -1072,14 +1078,14 @@ function cvc::dump {
                 skip=1
             fi
         done
-        
+
         # We log and output the line
         if [ ${skip} -eq 0 ]
         then
             _outputLog+=("${line}")
             echo "${line}"
         fi
-                
+
     done
 }
 
