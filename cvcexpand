@@ -911,7 +911,7 @@ function cvc::processFile {
 ################################################################################
 
 # Format: WorkTitle (Orchestras/Choirs/Conductors/Soloists, Year)
-function cvc::getDynamicAlbumTitle {
+function cvc::makeDynamicAlbumTitle {
     # Initiating variables
     local _album_suffix=""
 
@@ -957,13 +957,13 @@ function cvc::getDynamicAlbumTitle {
 
     if [ ! "${CVCData_WorkTitle}" == "" ]
     then
-        echo "ALBUM=${CVCData_WorkTitle} (${_album_suffix})"
-        echo "ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})"
+        CVC_OutputBuffer+=("ALBUM=${CVCData_WorkTitle} (${_album_suffix})")
+        CVC_OutputBuffer+=("ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})")
     fi
 
     if [ ! "${CVCData_WorkTitleSort}" == "" ]
     then
-        echo "ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})"
+        CVC_OutputBuffer+=("ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})")
     fi
 }
 
@@ -972,89 +972,92 @@ function cvc::getDynamicAlbumTitle {
 ################################################################################
 
 cvc::processFile "${targetCVCFile}"
-CVC_OutputBuffer+=$(cvc::getDynamicAlbumTitle)
+cvc::makeDynamicAlbumTitle
+cvc::makeDynamicTrackTitle
 
 ################################################################################
 # Generating TITLE and TRACKTITLE
 ################################################################################
 
 # Format: SLICENUMBERs SLICETYPE (Characters) WorkSliceTitle
+function cvc::makeDynamicTrackTitle {
 
-# Initiating variables
-CVCINTERNAL_TRACKTITLE=""
+    # Initiating variables
+    local _trackTitle=""
 
-# If workslice numbers are defined, we show them at the beginning of the title
-if [ ! "${CVCData_SliceNumbers}" == "" ]
-then
-    for SLICENUMBER in "${CVCData_SliceNumbers[@]}"; do
-        CVCINTERNAL_TRACKTITLE+="${SLICENUMBER}${CFG_CVCExpand_DefaultDelimiter}"
-    done
-    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
-fi
+    # If workslice numbers are defined, we show them at the beginning of the title
+    if [ ! "${CVCData_SliceNumbers}" == "" ]
+    then
+        for SLICENUMBER in "${CVCData_SliceNumbers[@]}"; do
+            _trackTitle+="${SLICENUMBER}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+        _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}} "
+    fi
 
-# If there is a slice type, we specify it here
-if [ ! "${CVCData_SliceTypes}" == "" ]
-then
-    for SLICETYPE in "${CVCData_SliceTypes[@]}"; do
-        CVCINTERNAL_TRACKTITLE+="${SLICETYPE}${CFG_CVCExpand_DefaultDelimiter}"
-    done
-    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
-fi
+    # If there is a slice type, we specify it here
+    if [ ! "${CVCData_SliceTypes}" == "" ]
+    then
+        for SLICETYPE in "${CVCData_SliceTypes[@]}"; do
+            _trackTitle+="${SLICETYPE}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+        _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}} "
+    fi
 
-# If characters are defined, we show them between braces
-if [ ! "${CVCData_Characters}" == "" ]
-then
-    # We keep a trace of the characters we already shew to avoid duplicates.
-    characterLog=()
-    
-    # Characters are shown between braces
-    CVCINTERNAL_TRACKTITLE+="("
-    
-    for character in "${CVCData_Characters[@]}"; do
-        # Checking whether the current character was already shown
-        skip=0
-        for loggedCharacter in "${characterLog[@]}"; do
-            if [ "${loggedCharacter}" == "${character}" ]
+    # If characters are defined, we show them between braces
+    if [ ! "${CVCData_Characters}" == "" ]
+    then
+        # We keep a trace of the characters we already shew to avoid duplicates.
+        characterLog=()
+        
+        # Characters are shown between braces
+        _trackTitle+="("
+        
+        for character in "${CVCData_Characters[@]}"; do
+            # Checking whether the current character was already shown
+            skip=0
+            for loggedCharacter in "${characterLog[@]}"; do
+                if [ "${loggedCharacter}" == "${character}" ]
+                then
+                    skip=1
+                fi
+            done
+        
+            # Showing character
+            if [ ${skip} -eq 0 ]
             then
-                skip=1
+                characterLog+=("${character}")
+                _trackTitle+="${character}${CFG_CVCExpand_DefaultDelimiter}"
             fi
         done
-    
-        # Showing character
-        if [ ${skip} -eq 0 ]
-        then
-            characterLog+=("${character}")
-            CVCINTERNAL_TRACKTITLE+="${character}${CFG_CVCExpand_DefaultDelimiter}"
-        fi
-    done
-    
-    # Closing braces
-    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}}) "
-fi
+        
+        # Closing braces
+        _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}}) "
+    fi
 
-# Next comes the slice title. If a title is defined, we use it.
-if [ ! "${CVCData_SliceTitles}" == "" ]
-then
-    for title in "${CVCData_SliceTitles[@]}"; do
-        CVCINTERNAL_TRACKTITLE+="${title}${CFG_CVCExpand_DefaultDelimiter}"
-    done
-    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
+    # Next comes the slice title. If a title is defined, we use it.
+    if [ ! "${CVCData_SliceTitles}" == "" ]
+    then
+        for title in "${CVCData_SliceTitles[@]}"; do
+            _trackTitle+="${title}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+        _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}} "
 
-# If no title is present, we try to use the first words as a title
-elif [ ! "${CVCData_Incipits}" == "" ]
-then
-    for firstwords in "${CVCData_Incipits[@]}"; do
-        CVCINTERNAL_TRACKTITLE+="'${firstwords}'${CFG_CVCExpand_DefaultDelimiter}"
-    done
-    CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}}"
+    # If no title is present, we try to use the first words as a title
+    elif [ ! "${CVCData_Incipits}" == "" ]
+    then
+        for firstwords in "${CVCData_Incipits[@]}"; do
+            _trackTitle+="'${firstwords}'${CFG_CVCExpand_DefaultDelimiter}"
+        done
+        _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}}"
 
-# If we land here, the track is untitled.
-else
-    CVCINTERNAL_TRACKTITLE="${CFG_CVCExpand_UntitledTracks}"
-fi
+    # If we land here, the track is untitled.
+    else
+        _trackTitle="${CFG_CVCExpand_UntitledTracks}"
+    fi
 
-CVC_OutputBuffer+=("TITLE=${CVCINTERNAL_TRACKTITLE}")
-CVC_OutputBuffer+=("TRACKTITLE=${CVCINTERNAL_TRACKTITLE}")
+    CVC_OutputBuffer+=("TITLE=${_trackTitle}")
+    CVC_OutputBuffer+=("TRACKTITLE=${_trackTitle}")
+}
 
 ################################################################################
 # Outputing results
