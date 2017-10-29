@@ -545,22 +545,6 @@ function processLine {
                     CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
 
-            # +DISCNUMBER=Discnumber|Totaldiscs
-            elif [ "$alias" == "+DISCNUMBER" ]
-            then
-                if [ "${values[1]}" ]
-                then
-                    CVC_OutputBuffer+=("DISC=${values[0]}/${values[1]}")
-                    CVC_OutputBuffer+=("DISCNUM=${values[0]}")
-                    CVC_OutputBuffer+=("DISCNUMBER=${values[0]}")
-                    CVC_OutputBuffer+=("TOTALDISCS=${values[1]}")
-                    CVC_OutputBuffer+=("DISCTOTAL=${values[1]}")
-                else
-                    CVC_OutputBuffer+=("DISC=${values[0]}")
-                    CVC_OutputBuffer+=("DISCNUM=${values[0]}")
-                    CVC_OutputBuffer+=("DISCNUMBER=${values[0]}")
-                fi
-
             # +FIRSTWORDS=FirstWords
             elif [ "$alias" == "+FIRSTWORDS" ]
             then
@@ -672,6 +656,22 @@ function processLine {
                     CVC_OutputBuffer+=("LYRICS=${values[0]}")
                 fi
 
+            # +MEDIUMNUMBER=MediumNumber|TotalMedia
+            elif [ "$alias" == "+MEDIUMNUMBER" ]
+            then
+                if [ "${values[1]}" ]
+                then
+                    CVC_OutputBuffer+=("DISC=${values[0]}/${values[1]}")
+                    CVC_OutputBuffer+=("DISCNUM=${values[0]}")
+                    CVC_OutputBuffer+=("DISCNUMBER=${values[0]}")
+                    CVC_OutputBuffer+=("TOTALDISCS=${values[1]}")
+                    CVC_OutputBuffer+=("DISCTOTAL=${values[1]}")
+                else
+                    CVC_OutputBuffer+=("DISC=${values[0]}")
+                    CVC_OutputBuffer+=("DISCNUM=${values[0]}")
+                    CVC_OutputBuffer+=("DISCNUMBER=${values[0]}")
+                fi
+
             # +MEDIUMTYPE=ShortLabel|FullLabel
             elif [ "$alias" == "+MEDIUMTYPE" ]
             then
@@ -775,12 +775,44 @@ function processLine {
                     (>&2 echo "Alias '+RELEASEID' requires exactly two arguments. The following line will be ignored:")
                 fi
 
+            # +RELEASEMEDIUMNUMBER=MediumNumber|TotalMedia
+            elif [ "$alias" == "+RELEASEMEDIUMNUMBER" ]
+            then
+                if [ "${values[1]}" ]
+                then
+                    CVC_OutputBuffer+=("ORIGINALDISC=${values[0]}/${values[1]}")
+                    CVC_OutputBuffer+=("ORIGINALDISCNUM=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALDISCNUMBER=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALTOTALDISCS=${values[1]}")
+                    CVC_OutputBuffer+=("ORIGINALDISCTOTAL=${values[1]}")
+                else
+                    CVC_OutputBuffer+=("ORIGINALDISC=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALDISCNUM=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALDISCNUMBER=${values[0]}")
+                fi
+
             # +RELEASESOURCE=ReleaseSource
             elif [ "$alias" == "+RELEASESOURCE" ]
             then
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("RELEASESOURCE=${values[0]}")
+                fi
+
+            # +RELEASETRACKNUMBER=Tracknumber|Totaltracks
+            elif [ "$alias" == "+RELEASETRACKNUMBER" ]
+            then
+                if [ "${values[1]}" ]
+                then
+                    CVC_OutputBuffer+=("ORIGINALTRACK=${values[0]}/${values[1]}")
+                    CVC_OutputBuffer+=("ORIGINALTRACKNUM=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALTRACKNUMBER=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALTOTALTRACKS=${values[1]}")
+                    CVC_OutputBuffer+=("ORIGINALTRACKTOTAL=${values[1]}")
+                else
+                    CVC_OutputBuffer+=("ORIGINALTRACK=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALTRACKNUM=${values[0]}")
+                    CVC_OutputBuffer+=("ORIGINALTRACKNUMBER=${values[0]}")
                 fi
 
             # +RELEASEURL=UrlDescribingTheRelease
