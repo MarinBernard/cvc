@@ -13,6 +13,9 @@ declare -a CVC_OutputBuffer
 # Those variables are needed to generate dynamic comments such as album names.
 declare -a CVCData_Characters
 declare -a CVCData_Choirs
+declare -a CVCData_Composers
+declare -a CVCData_ComposerBirthYears
+declare -a CVCData_ComposerDeathYears
 declare -a CVCData_Conductors
 declare -a CVCData_Incipits
 declare -a CVCData_Instrumentalists
@@ -434,11 +437,38 @@ function processLine {
                     CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
 
+            # +COMPOSERBIRTH=BirthDate|BirthPlace
+            elif [ "$alias" == "+COMPOSERBIRTH" ]
+            then
+                if [ "${values[1]}" ]
+                then
+                    CVCData_ComposerBirthYears+=("${values[0]:0:4}")
+                    CVC_OutputBuffer+=("COMPOSERBIRTHDATE=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSERBIRTHPLACE=${values[1]}")
+                else
+                    CVCData_ComposerBirthYears+=("${values[0]:0:4}")
+                    CVC_OutputBuffer+=("COMPOSERBIRTHDATE=${values[0]}")
+                fi
+
+            # +COMPOSERDEATH=DeathDate|DeathPlace
+            elif [ "$alias" == "+COMPOSERDEATH" ]
+            then
+                if [ "${values[1]}" ]
+                then
+                    CVCData_ComposerDeathYears+=("${values[0]:0:4}")
+                    CVC_OutputBuffer+=("COMPOSERDEATHDATE=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSERDEATHPLACE=${values[1]}")
+                else
+                    CVCData_ComposerDeathYears+=("${values[0]:0:4}")
+                    CVC_OutputBuffer+=("COMPOSERDEATHDATE=${values[0]}")
+                fi
+
             # +COMPOSERNAME=Fullname|Sortname|Shortname
             elif [ "$alias" == "+COMPOSERNAME" ]
             then
                 if [ "${values[2]}" ]
                 then
+                    CVCData_Composers+=("${values[2]}")
                     CVC_OutputBuffer+=("COMPOSER=${values[0]}")
                     CVC_OutputBuffer+=("COMPOSERSORT=${values[1]}")
                     CVC_OutputBuffer+=("COMPOSERSHORT=${values[2]}")
@@ -449,6 +479,7 @@ function processLine {
                     CVC_OutputBuffer+=("ALBUM ARTIST=${values[0]}")
                 elif [ "${values[1]}" ]
                 then
+                    CVCData_Composers+=("${values[1]}")
                     CVC_OutputBuffer+=("COMPOSER=${values[0]}")
                     CVC_OutputBuffer+=("COMPOSERSORT=${values[1]}")
                     CVC_OutputBuffer+=("ALBUMARTISTSORT=${values[1]}")
@@ -456,6 +487,7 @@ function processLine {
                     CVC_OutputBuffer+=("ALBUMARTIST=${values[0]}")
                     CVC_OutputBuffer+=("ALBUM ARTIST=${values[0]}")
                 else
+                    CVCData_Composers+=("${values[0]}")
                     CVC_OutputBuffer+=("COMPOSER=${values[0]}")
                     CVC_OutputBuffer+=("ALBUM_ARTIST=${values[0]}")
                     CVC_OutputBuffer+=("ALBUMARTIST=${values[0]}")
@@ -976,10 +1008,10 @@ function cvc::makeDynamicAlbumTitle {
     if [ ! "${CVCData_WorkIds}" == "" ]
     then
         for _workId in "${CVCData_WorkIds[@]}"; do
-            _workIds+="${_workId}${CFG_CVCExpand_DefaultDelimiter}"
+            _workIds+="${_workId}${CFG_CVCExpand_CatalogIdDelimiter}"
         done
     fi
-    _workIds=" (${_workIds%${CFG_CVCExpand_DefaultDelimiter}})"
+    _workIds=" (${_workIds%${CFG_CVCExpand_CatalogIdDelimiter}})"
 
     # Adding album title to the output buffer
     if [ ! "${CVCData_WorkTitle}" == "" ]

@@ -64,6 +64,10 @@ CFG_CVCExpand_DefaultLanguage="fr"
 # String inserted between multiple values
 CFG_CVCExpand_DefaultDelimiter="/"
 
+# String inserted between each catalog id assigned to a work.
+# This is used for dynamic album title generation.
+CFG_CVCExpand_CatalogIdDelimiter=", "
+
 # String to use for untitled tracks
 CFG_CVCExpand_UntitledTracks="[Sans titre]"
 
