@@ -3,37 +3,31 @@
 # Loading configuration
 ################################################################################
 
-CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
-source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+CVC_ScriptRootDir=$(dirname "$0")
+source "${CVC_ScriptRootDir}/config.inc"
 
 # Initializing the output buffer
-declare -a CVCINTERNAL_OUTPUTBUFFER
+declare -a CVC_OutputBuffer
 
 # Initialing internal storage variables
 # Those variables are needed to generate dynamic comments such as album names.
-declare -a CVCINTERNAL_CHARACTERS
-declare -a CVCINTERNAL_CHOIRS
-declare -a CVCINTERNAL_CONDUCTORS
-declare -a CVCINTERNAL_FIRSTWORDS
-declare -a CVCINTERNAL_ORCHESTRAS
-declare -a CVCINTERNAL_PERFORMANCEPLACE
-declare -a CVCINTERNAL_PERFORMANCEYEAR
-declare -a CVCINTERNAL_RELEASEYEAR
-declare -a CVCINTERNAL_SLICETYPES
-declare -a CVCINTERNAL_SLICENUMBERS
-declare -a CVCINTERNAL_SLICETITLES
-declare -a CVCINTERNAL_WORKTITLE
-declare -a CVCINTERNAL_WORKTITLESORT
+declare -a CVCData_Characters
+declare -a CVCData_Choirs
+declare -a CVCData_Conductors
+declare -a CVCData_Incipits
+declare -a CVCData_Orchestras
+declare -a CVCData_PerformancePlace
+declare -a CVCData_PerformanceYear
+declare -a CVCData_ReleaseYear
+declare -a CVCData_SliceTypes
+declare -a CVCData_SliceNumbers
+declare -a CVCData_SliceTitles
+declare -a CVCData_Soloists
+declare -a CVCData_WorkTitle
+declare -a CVCData_WorkTitleSort
 
 # Initializing the hash table storing constants
-declare -A CVCINTERNAL_CONSTANTS
-
-# We store the path to the root CVC file to be able to detect the end
-# of recursive calls.
-if [ -z "${CVCINTERNAL_RootCVCFile}" ]
-then
-    CVCINTERNAL_RootCVCFile="$1"
-fi
+declare -A CVC_Constants
 
 ################################################################################
 # Documentation
@@ -123,10 +117,6 @@ then
     [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 2 || exit 2
 fi
 
-################################################################################
-# Additional checks
-################################################################################
-
 # Abstracting supplied arguments
 targetCVCFile="$1"
 
@@ -137,12 +127,19 @@ then
     [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 3 || exit 3
 fi
 
+# We store the path to the root CVC file to be able to detect the end
+# of recursive calls.
+if [ -z "${CVC_RootCVCFile}" ]
+then
+    CVC_RootCVCFile="${targetCVCFile}"
+fi
+
 ################################################################################
 # Internal routines
 ################################################################################
 
 # Replace constant references with actual data in a value string.
-function substituteConstants {
+function cvc::substituteConstants {
 
     if [ -z "$1" ]
     then
@@ -160,10 +157,10 @@ function substituteConstants {
         constantName="${match#\{\{}"
         constantName="${constantName%\}\}}"
         
-        if [ "${CVCINTERNAL_CONSTANTS[$constantName]}" ]
+        if [ "${CVC_Constants[$constantName]}" ]
         then
             [ "${VERBOSE}" ] && >&2 echo "Retrieving constant '${constantName}'"
-            replacement="${CVCINTERNAL_CONSTANTS[$constantName]}"
+            replacement="${CVC_Constants[$constantName]}"
             value="${value//$match/$replacement}"
         else
             >&2 echo "ERROR: Unable to perform substitution as the constant is unknown."
@@ -194,7 +191,7 @@ function processLine {
         value=${line#$directive=}
         
         # Performing constant subtitution
-        value=$(substituteConstants "${value}")
+        value=$(cvc::substituteConstants "${value}")
     
         # Generic @INCLUDE inclusion directive
         if [ "$directive" == "@INCLUDE" ]
@@ -349,7 +346,7 @@ function processLine {
         if [ $processConstant -eq 1 ]
         then
             [ "${VERBOSE}" ] && >&2 echo "ACTION: Storing constant '${constantUID}' = '${value}'"
-            CVCINTERNAL_CONSTANTS["${constantUID}"]="${value}"
+            CVC_Constants["${constantUID}"]="${value}"
         fi
     
     #---------------------------------------------------------------------------
@@ -364,7 +361,7 @@ function processLine {
         value=${line#$fullAlias=}
         
         # Performing constant subtitution
-        value=$(substituteConstants "${value}")
+        value=$(cvc::substituteConstants "${value}")
         
         # Extracting subvalues
         IFS="|" read -ra values <<< $value
@@ -400,13 +397,13 @@ function processLine {
             then    
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_CHARACTERS+=("${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CHARACTER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CHARACTERSHORT=${values[1]}")      
+                    CVCData_Characters+=("${values[1]}")
+                    CVC_OutputBuffer+=("CHARACTER=${values[0]}")
+                    CVC_OutputBuffer+=("CHARACTERSHORT=${values[1]}")      
                 elif [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_CHARACTERS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CHARACTER=${values[0]}")
+                    CVCData_Characters+=("${values[0]}")
+                    CVC_OutputBuffer+=("CHARACTER=${values[0]}")
                 fi
         
             # +CHOIRNAME=Fullname|Sortname|Shortname
@@ -414,24 +411,24 @@ function processLine {
             then            
                 if [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_CHOIRS+=("${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLESORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLESHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                    CVCData_Choirs+=("${values[2]}")
+                    CVC_OutputBuffer+=("ENSEMBLE=${values[0]}")
+                    CVC_OutputBuffer+=("ENSEMBLESORT=${values[1]}")
+                    CVC_OutputBuffer+=("ENSEMBLESHORT=${values[2]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTISTSHORT=${values[2]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_CHOIRS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLESORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCData_Choirs+=("${values[0]}")
+                    CVC_OutputBuffer+=("ENSEMBLE=${values[0]}")
+                    CVC_OutputBuffer+=("ENSEMBLESORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
                 else
-                    CVCINTERNAL_CHOIRS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ENSEMBLE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCData_Choirs+=("${values[0]}")
+                    CVC_OutputBuffer+=("ENSEMBLE=${values[0]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
         
             # +COMPOSERNAME=Fullname|Sortname|Shortname
@@ -439,27 +436,27 @@ function processLine {
             then
                 if [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM_ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSER=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSERSORT=${values[1]}")
+                    CVC_OutputBuffer+=("COMPOSERSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("ALBUMARTISTSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("ALBUMARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ALBUM_ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ALBUMARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ALBUM ARTIST=${values[0]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSERSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM_ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSER=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSERSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ALBUMARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ALBUM_ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ALBUMARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ALBUM ARTIST=${values[0]}")
                 else
-                    CVCINTERNAL_OUTPUTBUFFER+=("COMPOSER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM_ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSER=${values[0]}")
+                    CVC_OutputBuffer+=("ALBUM_ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ALBUMARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ALBUM ARTIST=${values[0]}")
                 fi
             
             # +CONDUCTORNAME=Fullname|Sortname|Shortname
@@ -467,24 +464,24 @@ function processLine {
             then            
                 if [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_CONDUCTORS+=("${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTOR=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTORSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTORSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                    CVCData_Conductors+=("${values[2]}")
+                    CVC_OutputBuffer+=("CONDUCTOR=${values[0]}")
+                    CVC_OutputBuffer+=("CONDUCTORSORT=${values[1]}")
+                    CVC_OutputBuffer+=("CONDUCTORSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTISTSHORT=${values[2]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_CONDUCTORS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTOR=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTORSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCData_Conductors+=("${values[0]}")
+                    CVC_OutputBuffer+=("CONDUCTOR=${values[0]}")
+                    CVC_OutputBuffer+=("CONDUCTORSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
                 else
-                    CVCINTERNAL_CONDUCTORS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("CONDUCTOR=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCData_Conductors+=("${values[0]}")
+                    CVC_OutputBuffer+=("CONDUCTOR=${values[0]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
                 
             # +DISCNUMBER=Discnumber|Totaldiscs
@@ -492,15 +489,15 @@ function processLine {
             then            
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("DISC=${values[0]}/${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUM=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUMBER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("TOTALDISCS=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DISCTOTAL=${values[1]}")
+                    CVC_OutputBuffer+=("DISC=${values[0]}/${values[1]}")
+                    CVC_OutputBuffer+=("DISCNUM=${values[0]}")
+                    CVC_OutputBuffer+=("DISCNUMBER=${values[0]}")
+                    CVC_OutputBuffer+=("TOTALDISCS=${values[1]}")
+                    CVC_OutputBuffer+=("DISCTOTAL=${values[1]}")
                 else
-                    CVCINTERNAL_OUTPUTBUFFER+=("DISC=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUM=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DISCNUMBER=${values[0]}")
+                    CVC_OutputBuffer+=("DISC=${values[0]}")
+                    CVC_OutputBuffer+=("DISCNUM=${values[0]}")
+                    CVC_OutputBuffer+=("DISCNUMBER=${values[0]}")
                 fi
             
             # +FIRSTWORDS=FirstWords
@@ -508,8 +505,8 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_FIRSTWORDS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("FIRSTWORDS=${values[0]}")
+                    CVCData_Incipits+=("${values[0]}")
+                    CVC_OutputBuffer+=("FIRSTWORDS=${values[0]}")
                 fi
                 
             # +INSTRUMENT=InstrumentName
@@ -517,7 +514,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENT=${values[0]}")
+                    CVC_OutputBuffer+=("INSTRUMENT=${values[0]}")
                 fi
             
             # +INSTRUMENTALIST=Fullname|Sortname|Shortname|Instrument
@@ -525,38 +522,38 @@ function processLine {
             then
                 if [ "${values[3]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSORT=${values[1]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSHORT=${values[2]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("INSTRUMENTALIST=${values[0]} (${values[3]})")
+                    CVC_OutputBuffer+=("INSTRUMENTALISTSORT=${values[1]} (${values[3]})")
+                    CVC_OutputBuffer+=("INSTRUMENTALISTSHORT=${values[2]} (${values[3]})")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]} (${values[3]})")
+                    CVC_OutputBuffer+=("PERFORMERSORT=${values[1]} (${values[3]})")
+                    CVC_OutputBuffer+=("PERFORMERSHORT=${values[2]} (${values[3]})")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTISTSHORT=${values[2]}")
                 elif [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("INSTRUMENTALIST=${values[0]}")
+                    CVC_OutputBuffer+=("INSTRUMENTALISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("INSTRUMENTALISTSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMERSORT=${values[1]}")
+                    CVC_OutputBuffer+=("PERFORMERSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTISTSHORT=${values[2]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("INSTRUMENTALIST=${values[0]}")
+                    CVC_OutputBuffer+=("INSTRUMENTALISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMERSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
                 else
-                    CVCINTERNAL_OUTPUTBUFFER+=("INSTRUMENTALIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("INSTRUMENTALIST=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
                 
             # +KEY=MainKey|OpeningKey|ClosingKey
@@ -564,18 +561,18 @@ function processLine {
             then       
                 if [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("CLOSINGKEY=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("OPENINGKEY=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("KEY=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("MAINKEY=${values[0]}")
+                    CVC_OutputBuffer+=("CLOSINGKEY=${values[2]}")
+                    CVC_OutputBuffer+=("OPENINGKEY=${values[1]}")
+                    CVC_OutputBuffer+=("KEY=${values[1]}")
+                    CVC_OutputBuffer+=("MAINKEY=${values[0]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("OPENINGKEY=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("KEY=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("MAINKEY=${values[0]}")
+                    CVC_OutputBuffer+=("OPENINGKEY=${values[1]}")
+                    CVC_OutputBuffer+=("KEY=${values[1]}")
+                    CVC_OutputBuffer+=("MAINKEY=${values[0]}")
                 else
-                    CVCINTERNAL_OUTPUTBUFFER+=("KEY=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("MAINKEY=${values[0]}")
+                    CVC_OutputBuffer+=("KEY=${values[0]}")
+                    CVC_OutputBuffer+=("MAINKEY=${values[0]}")
                 fi
             
             # +LABELNAME=LabelName
@@ -583,7 +580,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("LABEL=${values[0]}")
+                    CVC_OutputBuffer+=("LABEL=${values[0]}")
                 fi
             
             # +LYRICS=Lyrics
@@ -591,7 +588,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("LYRICS=${values[0]}")
+                    CVC_OutputBuffer+=("LYRICS=${values[0]}")
                 fi
 
             # +MEDIUMTYPE=ShortLabel|FullLabel
@@ -599,12 +596,12 @@ function processLine {
             then            
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPE=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPESHORT=${values[0]}")
+                    CVC_OutputBuffer+=("MEDIUMTYPE=${values[1]}")
+                    CVC_OutputBuffer+=("MEDIUMTYPESHORT=${values[0]}")
                 elif [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("MEDIUMTYPESHORT=${values[0]}")
+                    CVC_OutputBuffer+=("MEDIUMTYPE=${values[0]}")
+                    CVC_OutputBuffer+=("MEDIUMTYPESHORT=${values[0]}")
                 fi
                 
             # +MUSICALERANAME=MusicalEraName
@@ -612,7 +609,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("GENRE=${values[0]}")
+                    CVC_OutputBuffer+=("GENRE=${values[0]}")
                 fi
                 
             # +ORCHESTRANAME=Fullname|Sortname|Shortname
@@ -620,24 +617,24 @@ function processLine {
             then
                 if [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_ORCHESTRAS+=("${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRA=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRASORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRASHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                    CVCData_Orchestras+=("${values[2]}")
+                    CVC_OutputBuffer+=("ORCHESTRA=${values[0]}")
+                    CVC_OutputBuffer+=("ORCHESTRASORT=${values[1]}")
+                    CVC_OutputBuffer+=("ORCHESTRASHORT=${values[2]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTISTSHORT=${values[2]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_ORCHESTRAS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRA=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRASORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCData_Orchestras+=("${values[0]}")
+                    CVC_OutputBuffer+=("ORCHESTRA=${values[0]}")
+                    CVC_OutputBuffer+=("ORCHESTRASORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
                 else
-                    CVCINTERNAL_ORCHESTRAS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ORCHESTRA=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCData_Orchestras+=("${values[0]}")
+                    CVC_OutputBuffer+=("ORCHESTRA=${values[0]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
 
             # +PERFORMED=PerformanceDate|PerformancePlace
@@ -645,19 +642,19 @@ function processLine {
             then            
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_PERFORMANCEYEAR+=("${values[0]:0:4}")
-                    CVCINTERNAL_PERFORMANCEPLACE+=("${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEDATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEYEAR=${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEPLACE=${values[1]}")
+                    CVCData_PerformanceYear+=("${values[0]:0:4}")
+                    CVCData_PerformancePlace+=("${values[1]}")
+                    CVC_OutputBuffer+=("DATE=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMANCEDATE=${values[0]}")
+                    CVC_OutputBuffer+=("YEAR=${values[0]:0:4}")
+                    CVC_OutputBuffer+=("PERFORMANCEYEAR=${values[0]:0:4}")
+                    CVC_OutputBuffer+=("PERFORMANCEPLACE=${values[1]}")
                 else
-                    CVCINTERNAL_PERFORMANCEYEAR+=("${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("DATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEDATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("YEAR=${values[0]:0:4}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMANCEYEAR=${values[0]:0:4}")
+                    CVCData_PerformanceYear+=("${values[0]:0:4}")
+                    CVC_OutputBuffer+=("DATE=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMANCEDATE=${values[0]}")
+                    CVC_OutputBuffer+=("YEAR=${values[0]:0:4}")
+                    CVC_OutputBuffer+=("PERFORMANCEYEAR=${values[0]:0:4}")
                 fi
 
             # +RELEASECHANNEL=ReleaseChannel
@@ -665,7 +662,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("RELEASECHANNEL=${values[0]}")
+                    CVC_OutputBuffer+=("RELEASECHANNEL=${values[0]}")
                 fi
 
             # +RELEASED=ReleaseDate
@@ -673,8 +670,8 @@ function processLine {
             then            
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("RELEASEDATE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("RELEASEYEAR=${values[0]:0:4}")
+                    CVC_OutputBuffer+=("RELEASEDATE=${values[0]}")
+                    CVC_OutputBuffer+=("RELEASEYEAR=${values[0]:0:4}")
                 fi
 
             # +RELEASEID=Id|IdType
@@ -685,10 +682,10 @@ function processLine {
                     # Barcode number
                     if [ "${values[1]^^}" == "BARCODE" ]
                     then
-                        CVCINTERNAL_OUTPUTBUFFER+=("BARCODE=${values[1]}")
+                        CVC_OutputBuffer+=("BARCODE=${values[1]}")
                     # Any other catalog number
                     else
-                        CVCINTERNAL_OUTPUTBUFFER+=("CATALOGNUMBER=${values[1]} ${values[0]}")
+                        CVC_OutputBuffer+=("CATALOGNUMBER=${values[1]} ${values[0]}")
                     fi
                 elif [ "${values[0]}" ]
                 then
@@ -702,7 +699,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("RELEASESOURCE=${values[0]}")
+                    CVC_OutputBuffer+=("RELEASESOURCE=${values[0]}")
                 fi
 
             # +RELEASEURL=UrlDescribingTheRelease
@@ -710,7 +707,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("URL=${values[0]}")
+                    CVC_OutputBuffer+=("URL=${values[0]}")
                 fi
             
             # +SLICENUMBER=SliceNumber
@@ -718,8 +715,8 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_SLICENUMBERS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SLICENUMBER=${values[0]}")
+                    CVCData_SliceNumbers+=("${values[0]}")
+                    CVC_OutputBuffer+=("SLICENUMBER=${values[0]}")
                 fi
             
             # +SLICETITLE=FullTitle|SortTitle|ShortTitle
@@ -727,19 +724,19 @@ function processLine {
             then            
                 if [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_SLICETITLES+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLESORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLESHORT=${values[2]}")
+                    CVCData_SliceTitles+=("${values[0]}")
+                    CVC_OutputBuffer+=("SLICETITLE=${values[0]}")
+                    CVC_OutputBuffer+=("SLICETITLESORT=${values[1]}")
+                    CVC_OutputBuffer+=("SLICETITLESHORT=${values[2]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_SLICETITLES+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETITLESORT=${values[1]}")
+                    CVCData_SliceTitles+=("${values[0]}")
+                    CVC_OutputBuffer+=("SLICETITLE=${values[0]}")
+                    CVC_OutputBuffer+=("SLICETITLESORT=${values[1]}")
                 elif [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_SLICETITLES+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKSLICETITLE=${values[0]}")
+                    CVCData_SliceTitles+=("${values[0]}")
+                    CVC_OutputBuffer+=("WORKSLICETITLE=${values[0]}")
                 fi
 
             # +SLICETYPE=SLICETYPE
@@ -747,9 +744,9 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_SLICETYPES+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SLICETYPE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("GENRE=${values[0]}")
+                    CVCData_SliceTypes+=("${values[0]}")
+                    CVC_OutputBuffer+=("SLICETYPE=${values[0]}")
+                    CVC_OutputBuffer+=("GENRE=${values[0]}")
                 fi
             
             # +SOLOISTNAME=Fullname|Sortname|Shortname|Instrument
@@ -757,42 +754,42 @@ function processLine {
             then
                 if [ "${values[3]}" ]
                 then
-                    CVCINTERNAL_SOLOISTS+=("${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSORT=${values[1]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSHORT=${values[2]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]} (${values[3]})")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                    CVCData_Soloists+=("${values[2]}")
+                    CVC_OutputBuffer+=("SOLOIST=${values[0]} (${values[3]})")
+                    CVC_OutputBuffer+=("SOLOISTSORT=${values[1]} (${values[3]})")
+                    CVC_OutputBuffer+=("SOLOISTSHORT=${values[2]} (${values[3]})")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]} (${values[3]})")
+                    CVC_OutputBuffer+=("PERFORMERSORT=${values[1]} (${values[3]})")
+                    CVC_OutputBuffer+=("PERFORMERSHORT=${values[2]} (${values[3]})")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTISTSHORT=${values[2]}")
                 elif [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_SOLOISTS+=("${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSHORT=${values[2]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSHORT=${values[2]}")
+                    CVCData_Soloists+=("${values[2]}")
+                    CVC_OutputBuffer+=("SOLOIST=${values[0]}")
+                    CVC_OutputBuffer+=("SOLOISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("SOLOISTSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMERSORT=${values[1]}")
+                    CVC_OutputBuffer+=("PERFORMERSHORT=${values[2]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTISTSHORT=${values[2]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_SOLOISTS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOISTSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMERSORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTISTSORT=${values[1]}")
+                    CVCData_Soloists+=("${values[0]}")
+                    CVC_OutputBuffer+=("SOLOIST=${values[0]}")
+                    CVC_OutputBuffer+=("SOLOISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMERSORT=${values[1]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
+                    CVC_OutputBuffer+=("ARTISTSORT=${values[1]}")
                 else
-                    CVCINTERNAL_SOLOISTS+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("SOLOIST=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("PERFORMER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("ARTIST=${values[0]}")
+                    CVCData_Soloists+=("${values[0]}")
+                    CVC_OutputBuffer+=("SOLOIST=${values[0]}")
+                    CVC_OutputBuffer+=("PERFORMER=${values[0]}")
+                    CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
                 
             # +TRACKNUMBER=Tracknumber|Totaltracks
@@ -800,15 +797,15 @@ function processLine {
             then            
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("TRACK=${values[0]}/${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUM=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUMBER=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("TOTALTRACKS=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKTOTAL=${values[1]}")
+                    CVC_OutputBuffer+=("TRACK=${values[0]}/${values[1]}")
+                    CVC_OutputBuffer+=("TRACKNUM=${values[0]}")
+                    CVC_OutputBuffer+=("TRACKNUMBER=${values[0]}")
+                    CVC_OutputBuffer+=("TOTALTRACKS=${values[1]}")
+                    CVC_OutputBuffer+=("TRACKTOTAL=${values[1]}")
                 else
-                    CVCINTERNAL_OUTPUTBUFFER+=("TRACK=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUM=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("TRACKNUMBER=${values[0]}")
+                    CVC_OutputBuffer+=("TRACK=${values[0]}")
+                    CVC_OutputBuffer+=("TRACKNUM=${values[0]}")
+                    CVC_OutputBuffer+=("TRACKNUMBER=${values[0]}")
                 fi
             
             # +TRACKTITLE --> Dynamically generated
@@ -818,9 +815,9 @@ function processLine {
             then            
                 if [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("CATALOGID=${values[1]} ${values[0]}")
+                    CVC_OutputBuffer+=("CATALOGID=${values[1]} ${values[0]}")
                 else
-                    CVCINTERNAL_OUTPUTBUFFER+=("CATALOGID=${values[0]}")
+                    CVC_OutputBuffer+=("CATALOGID=${values[0]}")
                 fi
                 
             # +WORKSUBTITLE=Subtitle
@@ -828,7 +825,7 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKSUBTITLE=${values[0]}")
+                    CVC_OutputBuffer+=("WORKSUBTITLE=${values[0]}")
                 fi
             
             # +WORKTITLE=Fulltitle|Sorttitle|Shorttitle
@@ -836,20 +833,20 @@ function processLine {
             then            
                 if [ "${values[2]}" ]
                 then
-                    CVCINTERNAL_WORKTITLE+=("${values[0]}")
-                    CVCINTERNAL_WORKTITLESORT+=("${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLESORT=${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLESHORT=${values[2]}")
+                    CVCData_WorkTitle+=("${values[0]}")
+                    CVCData_WorkTitleSort+=("${values[1]}")
+                    CVC_OutputBuffer+=("WORKTITLE=${values[0]}")
+                    CVC_OutputBuffer+=("WORKTITLESORT=${values[1]}")
+                    CVC_OutputBuffer+=("WORKTITLESHORT=${values[2]}")
                 elif [ "${values[1]}" ]
                 then
-                    CVCINTERNAL_WORKTITLE+=("${values[0]}")
-                    CVCINTERNAL_WORKTITLESORT+=("${values[1]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLESORT=${values[1]}")
+                    CVCData_WorkTitle+=("${values[0]}")
+                    CVCData_WorkTitleSort+=("${values[1]}")
+                    CVC_OutputBuffer+=("WORKTITLE=${values[0]}")
+                    CVC_OutputBuffer+=("WORKTITLESORT=${values[1]}")
                 else
-                    CVCINTERNAL_WORKTITLE+=("${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTITLE=${values[0]}")
+                    CVCData_WorkTitle+=("${values[0]}")
+                    CVC_OutputBuffer+=("WORKTITLE=${values[0]}")
                 fi
             
             # +WORKTYPE=WorkType
@@ -857,8 +854,8 @@ function processLine {
             then            
                 if [ "${values[0]}" ]
                 then
-                    CVCINTERNAL_OUTPUTBUFFER+=("WORKTYPE=${values[0]}")
-                    CVCINTERNAL_OUTPUTBUFFER+=("GENRE=${values[0]}")
+                    CVC_OutputBuffer+=("WORKTYPE=${values[0]}")
+                    CVC_OutputBuffer+=("GENRE=${values[0]}")
                 fi
 
             # If the alias is unknown, we halt here.
@@ -888,7 +885,7 @@ function processLine {
     #---------------------------------------------------------------------------
     elif [[ "${line}" == *"="* ]]
     then
-        CVCINTERNAL_OUTPUTBUFFER+=("$line")
+        CVC_OutputBuffer+=("$line")
         
     else
         >&2 echo "ERROR: Invalid line in file '${targetCVCFile}':"
@@ -921,57 +918,57 @@ processFile "${targetCVCFile}"
 # Format: WorkTitle (Orchestras/Choirs/Conductors/Soloists, Year)
 
 # Initiating variables
-CVCINTERNAL_ALBUMSUFFIX=""
+local _album_suffix=""
 
 # Adding orchestras to the album suffix
-if [ ! "${CVCINTERNAL_ORCHESTRAS}" == "" ]
+if [ ! "${CVCData_Orchestras}" == "" ]
 then
-    for orchestra in "${CVCINTERNAL_ORCHESTRAS[@]}"; do
-        CVCINTERNAL_ALBUMSUFFIX+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
+    for orchestra in "${CVCData_Orchestras[@]}"; do
+        _album_suffix+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
     done
 fi
 
 # Adding choirs to the album suffix
-if [ ! "${CVCINTERNAL_CHOIRS}" == "" ]
+if [ ! "${CVCData_Choirs}" == "" ]
 then
-    for choir in "${CVCINTERNAL_CHOIRS[@]}"; do
-        CVCINTERNAL_ALBUMSUFFIX+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
+    for choir in "${CVCData_Choirs[@]}"; do
+        _album_suffix+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
     done
 fi
 
 # Adding soloists to the album suffix
-if [ ! "${CVCINTERNAL_SOLOISTS}" == "" ] && [ "${#CVCINTERNAL_SOLOISTS[@]}" -lt 3 ]
+if [ ! "${CVCData_Soloists}" == "" ] && [ "${#CVCData_Soloists[@]}" -lt 3 ]
 then
-    for soloist in "${CVCINTERNAL_SOLOISTS[@]}"; do
-        CVCINTERNAL_ALBUMSUFFIX+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
+    for soloist in "${CVCData_Soloists[@]}"; do
+        _album_suffix+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
     done
 fi
 
 # Adding conductors to the album suffix
-if [ ! "${CVCINTERNAL_CONDUCTORS}" == "" ]
+if [ ! "${CVCData_Conductors}" == "" ]
 then
-    for conductor in "${CVCINTERNAL_CONDUCTORS[@]}"; do
-        CVCINTERNAL_ALBUMSUFFIX+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
+    for conductor in "${CVCData_Conductors[@]}"; do
+        _album_suffix+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
     done
 fi
 
 # Adding performance year to the album suffix
-if [ "${CVCINTERNAL_PERFORMANCEYEAR}" ]
+if [ "${CVCData_PerformanceYear}" ]
 then
-    CVCINTERNAL_ALBUMSUFFIX="${CVCINTERNAL_ALBUMSUFFIX%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCINTERNAL_PERFORMANCEYEAR}"
+    _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCData_PerformanceYear}"
 else    
-    CVCINTERNAL_ALBUMSUFFIX="${CVCINTERNAL_ALBUMSUFFIX%${CFG_CVCExpand_DefaultDelimiter}}"
+    _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}"
 fi
 
-if [ ! "${CVCINTERNAL_WORKTITLE}" == "" ]
+if [ ! "${CVCData_WorkTitle}" == "" ]
 then
-    CVCINTERNAL_OUTPUTBUFFER+=("ALBUM=${CVCINTERNAL_WORKTITLE} (${CVCINTERNAL_ALBUMSUFFIX})")
-    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMTITLE=${CVCINTERNAL_WORKTITLE} (${CVCINTERNAL_ALBUMSUFFIX})")
+    CVC_OutputBuffer+=("ALBUM=${CVCData_WorkTitle} (${_album_suffix})")
+    CVC_OutputBuffer+=("ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})")
 fi
 
-if [ ! "${CVCINTERNAL_WORKTITLESORT}" == "" ]
+if [ ! "${CVCData_WorkTitleSort}" == "" ]
 then
-    CVCINTERNAL_OUTPUTBUFFER+=("ALBUMSORT=${CVCINTERNAL_WORKTITLESORT} (${CVCINTERNAL_ALBUMSUFFIX})")
+    CVC_OutputBuffer+=("ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})")
 fi
 
 ################################################################################
@@ -984,25 +981,25 @@ fi
 CVCINTERNAL_TRACKTITLE=""
 
 # If workslice numbers are defined, we show them at the beginning of the title
-if [ ! "${CVCINTERNAL_SLICENUMBERS}" == "" ]
+if [ ! "${CVCData_SliceNumbers}" == "" ]
 then
-    for SLICENUMBER in "${CVCINTERNAL_SLICENUMBERS[@]}"; do
+    for SLICENUMBER in "${CVCData_SliceNumbers[@]}"; do
         CVCINTERNAL_TRACKTITLE+="${SLICENUMBER}${CFG_CVCExpand_DefaultDelimiter}"
     done
     CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
 fi
 
 # If there is a slice type, we specify it here
-if [ ! "${CVCINTERNAL_SLICETYPES}" == "" ]
+if [ ! "${CVCData_SliceTypes}" == "" ]
 then
-    for SLICETYPE in "${CVCINTERNAL_SLICETYPES[@]}"; do
+    for SLICETYPE in "${CVCData_SliceTypes[@]}"; do
         CVCINTERNAL_TRACKTITLE+="${SLICETYPE}${CFG_CVCExpand_DefaultDelimiter}"
     done
     CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
 fi
 
 # If characters are defined, we show them between braces
-if [ ! "${CVCINTERNAL_CHARACTERS}" == "" ]
+if [ ! "${CVCData_Characters}" == "" ]
 then
     # We keep a trace of the characters we already shew to avoid duplicates.
     characterLog=()
@@ -1010,7 +1007,7 @@ then
     # Characters are shown between braces
     CVCINTERNAL_TRACKTITLE+="("
     
-    for character in "${CVCINTERNAL_CHARACTERS[@]}"; do
+    for character in "${CVCData_Characters[@]}"; do
         # Checking whether the current character was already shown
         skip=0
         for loggedCharacter in "${characterLog[@]}"; do
@@ -1033,17 +1030,17 @@ then
 fi
 
 # Next comes the slice title. If a title is defined, we use it.
-if [ ! "${CVCINTERNAL_SLICETITLES}" == "" ]
+if [ ! "${CVCData_SliceTitles}" == "" ]
 then
-    for title in "${CVCINTERNAL_SLICETITLES[@]}"; do
+    for title in "${CVCData_SliceTitles[@]}"; do
         CVCINTERNAL_TRACKTITLE+="${title}${CFG_CVCExpand_DefaultDelimiter}"
     done
     CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}} "
 
 # If no title is present, we try to use the first words as a title
-elif [ ! "${CVCINTERNAL_FIRSTWORDS}" == "" ]
+elif [ ! "${CVCData_Incipits}" == "" ]
 then
-    for firstwords in "${CVCINTERNAL_FIRSTWORDS[@]}"; do
+    for firstwords in "${CVCData_Incipits[@]}"; do
         CVCINTERNAL_TRACKTITLE+="'${firstwords}'${CFG_CVCExpand_DefaultDelimiter}"
     done
     CVCINTERNAL_TRACKTITLE="${CVCINTERNAL_TRACKTITLE%${CFG_CVCExpand_DefaultDelimiter}}"
@@ -1053,8 +1050,8 @@ else
     CVCINTERNAL_TRACKTITLE="${CFG_CVCExpand_UntitledTracks}"
 fi
 
-CVCINTERNAL_OUTPUTBUFFER+=("TITLE=${CVCINTERNAL_TRACKTITLE}")
-CVCINTERNAL_OUTPUTBUFFER+=("TRACKTITLE=${CVCINTERNAL_TRACKTITLE}")
+CVC_OutputBuffer+=("TITLE=${CVCINTERNAL_TRACKTITLE}")
+CVC_OutputBuffer+=("TRACKTITLE=${CVCINTERNAL_TRACKTITLE}")
 
 ################################################################################
 # Outputing results
@@ -1063,7 +1060,7 @@ CVCINTERNAL_OUTPUTBUFFER+=("TRACKTITLE=${CVCINTERNAL_TRACKTITLE}")
 # We keep a log of all lines already shown to prevent outputing the same line twice.
 outputLog=()
 
-for line in "${CVCINTERNAL_OUTPUTBUFFER[@]}"; do
+for line in "${CVC_OutputBuffer[@]}"; do
 
     # We do not skip the line by default
     skip=0
