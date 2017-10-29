@@ -307,7 +307,7 @@ function processLine {
         
         # Recursive call
         [ "${OPT_Verbose}" ] && >&2 echo "ACTION: Including file ${nextFileToInclude}"
-        processFile "${nextFileToInclude}"
+        cvc::processFile "${nextFileToInclude}"
         [ "${OPT_Verbose}" ] && >&2 echo "INFO: Back to file ${currentFile}"
     
     #---------------------------------------------------------------------------
@@ -895,7 +895,7 @@ function processLine {
     fi
 }
 
-function processFile {
+function cvc::processFile {
 
     # The currentFile variable needs to survive recursive calls.
     local currentFile="${1}"
@@ -910,67 +910,69 @@ function processFile {
 # Main entry point
 ################################################################################
 
-processFile "${targetCVCFile}"
+cvc::processFile "${targetCVCFile}"
+CVC_OutputBuffer+=$(cvc::getDynamicAlbumTitle)
 
 ################################################################################
 # Generating ALBUM and ALBUMTITLE
 ################################################################################
 
 # Format: WorkTitle (Orchestras/Choirs/Conductors/Soloists, Year)
+function cvc::getDynamicAlbumTitle {
+    # Initiating variables
+    local _album_suffix=""
 
-# Initiating variables
-local _album_suffix=""
+    # Adding orchestras to the album suffix
+    if [ ! "${CVCData_Orchestras}" == "" ]
+    then
+        for orchestra in "${CVCData_Orchestras[@]}"; do
+            _album_suffix+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+    fi
 
-# Adding orchestras to the album suffix
-if [ ! "${CVCData_Orchestras}" == "" ]
-then
-    for orchestra in "${CVCData_Orchestras[@]}"; do
-        _album_suffix+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
-    done
-fi
+    # Adding choirs to the album suffix
+    if [ ! "${CVCData_Choirs}" == "" ]
+    then
+        for choir in "${CVCData_Choirs[@]}"; do
+            _album_suffix+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+    fi
 
-# Adding choirs to the album suffix
-if [ ! "${CVCData_Choirs}" == "" ]
-then
-    for choir in "${CVCData_Choirs[@]}"; do
-        _album_suffix+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
-    done
-fi
+    # Adding soloists to the album suffix
+    if [ ! "${CVCData_Soloists}" == "" ] && [ "${#CVCData_Soloists[@]}" -lt 3 ]
+    then
+        for soloist in "${CVCData_Soloists[@]}"; do
+            _album_suffix+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+    fi
 
-# Adding soloists to the album suffix
-if [ ! "${CVCData_Soloists}" == "" ] && [ "${#CVCData_Soloists[@]}" -lt 3 ]
-then
-    for soloist in "${CVCData_Soloists[@]}"; do
-        _album_suffix+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
-    done
-fi
+    # Adding conductors to the album suffix
+    if [ ! "${CVCData_Conductors}" == "" ]
+    then
+        for conductor in "${CVCData_Conductors[@]}"; do
+            _album_suffix+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
+        done
+    fi
 
-# Adding conductors to the album suffix
-if [ ! "${CVCData_Conductors}" == "" ]
-then
-    for conductor in "${CVCData_Conductors[@]}"; do
-        _album_suffix+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
-    done
-fi
+    # Adding performance year to the album suffix
+    if [ "${CVCData_PerformanceYear}" ]
+    then
+        _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCData_PerformanceYear}"
+    else    
+        _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}"
+    fi
 
-# Adding performance year to the album suffix
-if [ "${CVCData_PerformanceYear}" ]
-then
-    _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}, ${CVCData_PerformanceYear}"
-else    
-    _album_suffix="${_album_suffix%${CFG_CVCExpand_DefaultDelimiter}}"
-fi
+    if [ ! "${CVCData_WorkTitle}" == "" ]
+    then
+        echo ("ALBUM=${CVCData_WorkTitle} (${_album_suffix})")
+        echo ("ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})")
+    fi
 
-if [ ! "${CVCData_WorkTitle}" == "" ]
-then
-    CVC_OutputBuffer+=("ALBUM=${CVCData_WorkTitle} (${_album_suffix})")
-    CVC_OutputBuffer+=("ALBUMTITLE=${CVCData_WorkTitle} (${_album_suffix})")
-fi
-
-if [ ! "${CVCData_WorkTitleSort}" == "" ]
-then
-    CVC_OutputBuffer+=("ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})")
-fi
+    if [ ! "${CVCData_WorkTitleSort}" == "" ]
+    then
+        echo ("ALBUMSORT=${CVCData_WorkTitleSort} (${_album_suffix})")
+    fi
+}
 
 ################################################################################
 # Generating TITLE and TRACKTITLE
