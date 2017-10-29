@@ -1084,8 +1084,8 @@ function cvc::makeDynamicAlbumTitle {
         for _workId in "${CVCData_WorkIds[@]}"; do
             _workIds+="${_workId}${CFG_CVCExpand_CatalogIdDelimiter}"
         done
+        _workIds=" (${_workIds%${CFG_CVCExpand_CatalogIdDelimiter}})"
     fi
-    _workIds=" (${_workIds%${CFG_CVCExpand_CatalogIdDelimiter}})"
 
     # Adding album title to the output buffer
     if [ ! "${CVCData_WorkTitle}" == "" ]
