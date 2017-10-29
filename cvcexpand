@@ -968,14 +968,6 @@ function cvc::makeDynamicAlbumTitle {
 }
 
 ################################################################################
-# Main entry point
-################################################################################
-
-cvc::processFile "${targetCVCFile}"
-cvc::makeDynamicAlbumTitle
-cvc::makeDynamicTrackTitle
-
-################################################################################
 # Generating TITLE and TRACKTITLE
 ################################################################################
 
@@ -1058,6 +1050,14 @@ function cvc::makeDynamicTrackTitle {
     CVC_OutputBuffer+=("TITLE=${_trackTitle}")
     CVC_OutputBuffer+=("TRACKTITLE=${_trackTitle}")
 }
+
+################################################################################
+# Main entry point
+################################################################################
+
+cvc::processFile "${targetCVCFile}"
+cvc::makeDynamicAlbumTitle
+cvc::makeDynamicTrackTitle
 
 ################################################################################
 # Outputing results
