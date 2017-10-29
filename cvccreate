@@ -4,7 +4,7 @@
 ################################################################################
 
 CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
-source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+source "${CVCINTERNAL_SCRIPTROOT}/config"
 
 # This array stores custom constant definitions
 declare -A CVCINTERNAL_CUSTOMCONSTANTS
@@ -55,23 +55,23 @@ while getopts ":fht:vC:" option; do
         f)
             FORCE=1
             ;;
-        
+
         # -h: Help
         h)
             usage
             exit
             ;;
-            
+
         # -t: Template
         t)
             CVCTemplate="${CFG_CVCTemplatesPath}/${OPTARG}.${CFG_FileExtensions_CVCTemplates}"
             ;;
-            
+
         # -v: Verbose mode
         v)
             VERBOSE=1
             ;;
-        
+
         # -C: Constant definition
         C)
             # Checking constant definition
@@ -81,27 +81,27 @@ while getopts ":fht:vC:" option; do
                 usage
                 [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             fi
-            
+
             # Storing the constant
             constantName="${OPTARG%=*}"
             constantValue="${OPTARG#*=}"
             CVCINTERNAL_CUSTOMCONSTANTS["${constantName}"]="${constantValue}"
             ;;
-        
+
         # Syntax error
         \?)
             >&2 echo "ERROR: Invalid option: -${OPTARG}"
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Syntax error
         :)
             >&2 echo "ERROR: Option -${OPTARG} requires an argument."
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Any other value is an internal error
         *)
             >&2 echo "ERROR: Internal getopts error."
@@ -141,7 +141,7 @@ targetCVCFile="${targetFileBasename}.${CFG_FileExtensions_CVC}"
 
 # Checking whether the CVC template is valid
 if [ "${CVCTemplate}" ] && [ ! -f "${CVCTemplate}" ]
-then    
+then
     >&2 echo "ERROR: CVC template file '${CVCTemplate}' does not exist."
     [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 4 || exit 4
 fi

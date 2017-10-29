@@ -4,7 +4,7 @@
 ################################################################################
 
 CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
-source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+source "${CVCINTERNAL_SCRIPTROOT}/config"
 
 ################################################################################
 # Documentation
@@ -47,38 +47,38 @@ while getopts ":fhl:v" option; do
         f)
             extraArgs+="-f "
             ;;
-        
+
         # -h: Help
         h)
             usage
             exit
             ;;
-        
+
         # -l: Language filter
         l)
             extraArgs+="-l ${OPTARG}"
-            ;;    
-            
+            ;;
+
         # -v: Verbose mode
         v)
             VERBOSE=1
             extraArgs+="-v "
             ;;
-        
+
         # Syntax error
         \?)
             >&2 echo "ERROR: Invalid option: -${OPTARG}"
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Syntax error
         :)
             >&2 echo "ERROR: Option -${OPTARG} requires an argument."
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Any other value is an internal error
         *)
             >&2 echo "ERROR: Internal getopts error."
@@ -122,6 +122,6 @@ for cvcFile in "${targetDirectory}/"*.${CFG_FileExtensions_CVC}
 do
     ((fileCount+=1))
     [ "${VERBOSE}" ] && echo "Processing file #${fileCount}: ${cvcFile}..."
-    
+
     "${CFG_CVCTools_CVCCommit}" ${extraArgs} "${cvcFile}"
 done

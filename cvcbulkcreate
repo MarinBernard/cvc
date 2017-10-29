@@ -4,7 +4,7 @@
 ################################################################################
 
 CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
-source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+source "${CVCINTERNAL_SCRIPTROOT}/config"
 
 ################################################################################
 # Documentation
@@ -48,38 +48,38 @@ while getopts ":fht:v" option; do
         f)
             extraArgs+="-f "
             ;;
-        
+
         # -h: Help
         h)
             usage
             exit
             ;;
-        
+
         # -t: CVC template
         t)
             extraArgs+="-t ${OPTARG}"
-            ;;        
-            
+            ;;
+
         # -v: Verbose mode
         v)
             VERBOSE=1
             extraArgs+="-v "
             ;;
-        
+
         # Syntax error
         \?)
             >&2 echo "ERROR: Invalid option: -${OPTARG}"
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Syntax error
         :)
             >&2 echo "ERROR: Option -${OPTARG} requires an argument."
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Any other value is an internal error
         *)
             >&2 echo "ERROR: Internal getopts error."
@@ -116,7 +116,7 @@ fi
 # Detecting tracklist properties
 ################################################################################
 
-# Detect the total number of discs, the total number of tracks per disc, 
+# Detect the total number of discs, the total number of tracks per disc,
 # and the total number of tracks.
 
 ################################################################################
@@ -130,10 +130,10 @@ for audioFile in "${targetDirectory}/"*.${CFG_FileExtensions_Audio}
 do
     ((fileCount+=1))
     [ "${VERBOSE}" ] && echo "Processing file #${fileCount}: ${audioFile}..."
-    
+
     # Setting up useful variables
     audioFileBasename=$(basename "${audioFile}" ".${CFG_FileExtensions_Audio}")
-    
+
     # Detecting disk number
     discNumberPrefix=$(echo "${audioFileBasename}" | grep -oE "^[0-9]?[0-9]-")
     if [ "${discNumberPrefix}" ]
@@ -154,7 +154,7 @@ do
     else
         [ "${VERBOSE}" ] && echo "Detected disc number: None. Assuming none."
     fi
-    
+
     # Calling cvccreate
     "${CFG_CVCTools_CVCCreate}" ${extraArgs} "${audioFile}"
 done

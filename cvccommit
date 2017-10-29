@@ -4,7 +4,7 @@
 ################################################################################
 
 CVCINTERNAL_SCRIPTROOT=$(dirname "$0")
-source "${CVCINTERNAL_SCRIPTROOT}/config.inc"
+source "${CVCINTERNAL_SCRIPTROOT}/config"
 
 ################################################################################
 # Documentation
@@ -56,37 +56,37 @@ while getopts ":fhl:v" option; do
         f)
             OPT_Force=1
             ;;
-        
+
         # -h: Help
         h)
             usage
             exit
             ;;
-        
+
         # -l: Language filter
         l)
             cvcexpandExtraArgs+="-l ${OPTARG}"
-            ;;        
-            
+            ;;
+
         # -v: Verbose mode
         v)
             OPT_Verbose=1
             ;;
-        
+
         # Syntax error
         \?)
             >&2 echo "ERROR: Invalid option: -${OPTARG}"
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Syntax error
         :)
             >&2 echo "ERROR: Option -${OPTARG} requires an argument."
             usage
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 1 || exit 1
             ;;
-        
+
         # Any other value is an internal error
         *)
             >&2 echo "ERROR: Internal getopts error."
@@ -161,7 +161,7 @@ fi
 if [ -f "${targetTagsFile}" ]
 then
     echo "${expansionOutput}" | diff -q "${targetTagsFile}" - > /dev/null
-    
+
     if [ "$?" -gt 0 ] || [ "${OPT_Force}" ]
     then
         [ "${OPT_Verbose}" ] && echo "Updating tag file ${targetTagsFile}..."
@@ -183,7 +183,7 @@ fi
 if [[ "${targetTagsFile}" -nt "${targetAudioFile}" ]] || [ "${OPT_Force}" ]
 then
     [ "${OPT_Verbose}" ] && echo "Updating metadata in audio file ${targetAudioFile}..."
-    
+
     # Deleting current FLAC tags
     "${CFG_ExtTools_Metaflac}" --remove-all-tags "${targetAudioFile}" > /dev/null
     if [ ! "$?" -eq 0 ]
@@ -200,7 +200,7 @@ then
         >&2 echo "ERROR: Unable to add the new FLAC tags. Operation halted."
         [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 7 || exit 7
     fi
-    
+
 else
     [ "${OPT_Verbose}" ] && echo "Audio file metadata are already up to date."
 fi
@@ -233,20 +233,20 @@ do
                 # We add the picture file to the list of found picture files.
                 [ "${OPT_Verbose}" ] && echo "Album picture found (front): ${pictureBasename}.${pictureExtension}"
                 frontPictures+=("${pictureFile}")
-            
+
             # Back picture
             elif [[ " ${CFG_CVCCommit_AlbumArt_Back[*]} " == *" ${pictureBasename} "*  ]]
             then
                 # We add the picture file to the list of found picture files.
                 [ "${OPT_Verbose}" ] && echo "Album picture found (back): ${pictureBasename}.${pictureExtension}"
                 backPictures+=("${pictureFile}")
-            
+
             else
                 >&2 echo "ERROR: Unable to deduce the type of an album picture."
                 [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 16 || exit 16
             fi
-            
-            # If at least one picture file is newer than the last modification 
+
+            # If at least one picture file is newer than the last modification
             # time of the audio file, the audio file needs to be updated. Since
             # that update requires removing all embedded pictures from the file
             # first, all available pictures will have to be reembedded. A single
@@ -266,7 +266,7 @@ then
     # Deleting previous embedded pictures
     [ "${OPT_Verbose}" ] && echo "Removing all embedded pictures from the audio file ${targetAudioFile}..."
     "${CFG_ExtTools_Metaflac}" --remove --block-type=PICTURE "${targetAudioFile}" > /dev/null
-    
+
     # Checking removal result
     if [ ! "$?" -eq 0 ]
     then
@@ -277,7 +277,7 @@ then
     # Embedding front pictures
     for pictureFile in "${frontPictures[@]}"
     do
-        [ "${OPT_Verbose}" ] && echo "Embedding front picture ${pictureFile} into file ${targetAudioFile}..."            
+        [ "${OPT_Verbose}" ] && echo "Embedding front picture ${pictureFile} into file ${targetAudioFile}..."
 
         "${CFG_ExtTools_Metaflac}" --import-picture-from="3||||${pictureFile}" "${targetAudioFile}" > /dev/null
         if [ ! "$?" -eq 0 ]
@@ -286,11 +286,11 @@ then
             [[ "${BASH_SOURCE[0]}" != "${0}" ]] && return 9 || exit 9
         fi
     done
-    
+
     # Embedding back pictures
     for pictureFile in "${backPictures[@]}"
     do
-        [ "${OPT_Verbose}" ] && echo "Embedding back picture ${pictureFile} into file ${targetAudioFile}..."            
+        [ "${OPT_Verbose}" ] && echo "Embedding back picture ${pictureFile} into file ${targetAudioFile}..."
 
         "${CFG_ExtTools_Metaflac}" --import-picture-from="4||||${pictureFile}" "${targetAudioFile}" > /dev/null
         if [ ! "$?" -eq 0 ]
@@ -302,4 +302,3 @@ then
 else
     [ "${OPT_Verbose}" ] && echo "Embedded pictures are up to date."
 fi
-

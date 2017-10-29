@@ -4,7 +4,7 @@
 ################################################################################
 
 CVC_ScriptRootDir=$(dirname "$0")
-source "${CVC_ScriptRootDir}/config.inc"
+source "${CVC_ScriptRootDir}/config"
 
 # Initializing the output buffer
 declare -a CVC_OutputBuffer
@@ -249,6 +249,12 @@ function processLine {
             nextFileToInclude="${CFG_IncludePath_LABEL}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @LABEL directive pointing towards ${nextFileToInclude}"
 
+        # @LYRICIST inclusion directive
+        elif [ "$directive" == "@LYRICIST" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_LYRICIST}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @LYRICIST directive pointing towards ${nextFileToInclude}"
+
         # @MEDIUMTYPE inclusion directive
         elif [ "$directive" == "@MEDIUMTYPE" ]
         then
@@ -437,6 +443,20 @@ function processLine {
                     CVC_OutputBuffer+=("ARTIST=${values[0]}")
                 fi
 
+            # +COMPOSED=CompositionDate|CompositionPlace
+            elif [ "$alias" == "+COMPOSED" ]
+            then
+                if [ "${values[1]}" ]
+                then
+                    CVC_OutputBuffer+=("COMPOSITIONDATE=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSITIONYEAR=${values[0]:0:4}")
+                    CVC_OutputBuffer+=("COMPOSITIONPLACE=${values[1]}")
+                else
+                    CVCData_ComposerBirthYears+=("${values[0]:0:4}")
+                    CVC_OutputBuffer+=("COMPOSITIONDATE=${values[0]}")
+                    CVC_OutputBuffer+=("COMPOSITIONYEAR=${values[0]:0:4}")
+                fi
+
             # +COMPOSERBIRTH=BirthDate|BirthPlace
             elif [ "$alias" == "+COMPOSERBIRTH" ]
             then
@@ -620,6 +640,22 @@ function processLine {
                 if [ "${values[0]}" ]
                 then
                     CVC_OutputBuffer+=("LABEL=${values[0]}")
+                fi
+
+            # +LYRICISTNAME=FullName|SortName|ShortName
+            elif [ "$alias" == "+LYRICISTNAME" ]
+            then
+                if [ "${values[2]}" ]
+                then
+                    CVC_OutputBuffer+=("LYRICIST=${values[0]}")
+                    CVC_OutputBuffer+=("LYRICISTSORT=${values[1]}")
+                    CVC_OutputBuffer+=("LYRICISTSHORT=${values[2]}")
+                elif [ "${values[1]}" ]
+                then
+                    CVC_OutputBuffer+=("LYRICIST=${values[0]}")
+                    CVC_OutputBuffer+=("LYRICISTSORT=${values[1]}")
+                else
+                    CVC_OutputBuffer+=("LYRICIST=${values[0]}")
                 fi
 
             # +LYRICS=Lyrics
