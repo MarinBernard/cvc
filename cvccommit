@@ -60,6 +60,7 @@ while getopts ":fhl:v" option; do
         # -h: Help
         h)
             usage
+            exit
             ;;
         
         # -l: Language filter

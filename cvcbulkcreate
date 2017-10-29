@@ -52,6 +52,7 @@ while getopts ":fht:v" option; do
         # -h: Help
         h)
             usage
+            exit
             ;;
         
         # -t: CVC template

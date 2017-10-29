@@ -59,6 +59,7 @@ while getopts ":fht:vC:" option; do
         # -h: Help
         h)
             usage
+            exit
             ;;
             
         # -t: Template

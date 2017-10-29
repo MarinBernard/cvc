@@ -73,6 +73,7 @@ while getopts ":hl:v" option; do
         # -h: Help
         h)
             usage
+            exit
             ;;
             
         # -l: Language
