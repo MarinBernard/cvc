@@ -1003,7 +1003,7 @@ function cvc::makeDynamicAlbumTitle {
 function cvc::makeDynamicTrackTitle {
 
     # Initiating variables
-    local _trackTitle=""
+    local _trackTitle
 
     # If workslice numbers are defined, we show them at the beginning of the title
     if [ ! "${CVCData_SliceNumbers}" == "" ]
@@ -1027,26 +1027,26 @@ function cvc::makeDynamicTrackTitle {
     if [ ! "${CVCData_Characters}" == "" ]
     then
         # We keep a trace of the characters we already shew to avoid duplicates.
-        characterLog=()
+        declare -a _characterLog
 
         # Characters are shown between braces
         _trackTitle+="("
 
-        for character in "${CVCData_Characters[@]}"; do
+        for _character in "${CVCData_Characters[@]}"; do
             # Checking whether the current character was already shown
-            skip=0
-            for loggedCharacter in "${characterLog[@]}"; do
-                if [ "${loggedCharacter}" == "${character}" ]
+            _skip=0
+            for _loggedCharacter in "${characterLog[@]}"; do
+                if [ "${_loggedCharacter}" == "${_character}" ]
                 then
-                    skip=1
+                    _skip=1
                 fi
             done
 
             # Showing character
             if [ ${skip} -eq 0 ]
             then
-                characterLog+=("${character}")
-                _trackTitle+="${character}${CFG_CVCExpand_DefaultDelimiter}"
+                _characterLog+=("${_character}")
+                _trackTitle+="${_character}${CFG_CVCExpand_DefaultDelimiter}"
             fi
         done
 
@@ -1057,16 +1057,16 @@ function cvc::makeDynamicTrackTitle {
     # Next comes the slice title. If a title is defined, we use it.
     if [ ! "${CVCData_SliceTitles}" == "" ]
     then
-        for title in "${CVCData_SliceTitles[@]}"; do
-            _trackTitle+="${title}${CFG_CVCExpand_DefaultDelimiter}"
+        for _title in "${CVCData_SliceTitles[@]}"; do
+            _trackTitle+="${_title}${CFG_CVCExpand_DefaultDelimiter}"
         done
         _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}} "
 
     # If no title is present, we try to use the first words as a title
     elif [ ! "${CVCData_Incipits}" == "" ]
     then
-        for firstwords in "${CVCData_Incipits[@]}"; do
-            _trackTitle+="'${firstwords}'${CFG_CVCExpand_DefaultDelimiter}"
+        for _firstwords in "${CVCData_Incipits[@]}"; do
+            _trackTitle+="'${_firstwords}'${CFG_CVCExpand_DefaultDelimiter}"
         done
         _trackTitle="${_trackTitle%${CFG_CVCExpand_DefaultDelimiter}}"
 
