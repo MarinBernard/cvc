@@ -1052,38 +1052,42 @@ function cvc::makeDynamicTrackTitle {
 }
 
 ################################################################################
+# Outputing results
+################################################################################
+
+function cvc::dump {
+
+    # We keep a log of all lines already shown to prevent outputing the same line twice.
+    local _outputLog=()
+
+    for line in "${CVC_OutputBuffer[@]}"; do
+
+        # We do not skip the line by default
+        skip=0
+
+        # Checking whether the current line is a duplicate
+        for loggedLine in "${_outputLog[@]}"; do
+            if [ "${loggedLine}" == "${line}" ]
+            then
+                skip=1
+            fi
+        done
+        
+        # We log and output the line
+        if [ ${skip} -eq 0 ]
+        then
+            _outputLog+=("${line}")
+            echo "${line}"
+        fi
+                
+    done
+}
+
+################################################################################
 # Main entry point
 ################################################################################
 
 cvc::processFile "${targetCVCFile}"
 cvc::makeDynamicAlbumTitle
 cvc::makeDynamicTrackTitle
-
-################################################################################
-# Outputing results
-################################################################################
-
-# We keep a log of all lines already shown to prevent outputing the same line twice.
-outputLog=()
-
-for line in "${CVC_OutputBuffer[@]}"; do
-
-    # We do not skip the line by default
-    skip=0
-
-    # Checking whether the current line is a duplicate
-    for loggedLine in "${outputLog[@]}"; do
-        if [ "${loggedLine}" == "${line}" ]
-        then
-            skip=1
-        fi
-    done
-    
-    # We log and output the line
-    if [ ${skip} -eq 0 ]
-    then
-        outputLog+=("${line}")
-        echo "${line}"
-    fi
-            
-done
+cvc::dump
