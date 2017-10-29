@@ -930,32 +930,32 @@ function cvc::makeDynamicAlbumTitle {
     # Adding orchestras to the album suffix
     if [ ! "${CVCData_Orchestras}" == "" ]
     then
-        for orchestra in "${CVCData_Orchestras[@]}"; do
-            _albumSuffix+="${orchestra}${CFG_CVCExpand_DefaultDelimiter}"
+        for _orchestra in "${CVCData_Orchestras[@]}"; do
+            _albumSuffix+="${_orchestra}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
 
     # Adding choirs to the album suffix
     if [ ! "${CVCData_Choirs}" == "" ]
     then
-        for choir in "${CVCData_Choirs[@]}"; do
-            _albumSuffix+="${choir}${CFG_CVCExpand_DefaultDelimiter}"
+        for _choir in "${CVCData_Choirs[@]}"; do
+            _albumSuffix+="${_choir}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
 
     # Adding soloists to the album suffix
     if [ ! "${CVCData_Soloists}" == "" ] && [ "${#CVCData_Soloists[@]}" -lt 3 ]
     then
-        for soloist in "${CVCData_Soloists[@]}"; do
-            _albumSuffix+="${soloist}${CFG_CVCExpand_DefaultDelimiter}"
+        for _soloist in "${CVCData_Soloists[@]}"; do
+            _albumSuffix+="${_soloist}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
 
     # Adding conductors to the album suffix
     if [ ! "${CVCData_Conductors}" == "" ]
     then
-        for conductor in "${CVCData_Conductors[@]}"; do
-            _albumSuffix+="${conductor}${CFG_CVCExpand_DefaultDelimiter}"
+        for _conductor in "${CVCData_Conductors[@]}"; do
+            _albumSuffix+="${_conductor}${CFG_CVCExpand_DefaultDelimiter}"
         done
     fi
 
