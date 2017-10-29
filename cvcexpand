@@ -65,7 +65,7 @@ function usage {
 ################################################################################
 
 # Default values
-TARGETLANGUAGE="${CFG_CVCExpand_DefaultLanguage}"
+OPT_TargetLanguage="${CFG_CVCExpand_DefaultLanguage}"
 
 # Calling option parser
 while getopts ":hl:v" option; do
@@ -78,12 +78,12 @@ while getopts ":hl:v" option; do
             
         # -l: Language
         l)
-            TARGETLANGUAGE="${OPTARG}"
+            OPT_TargetLanguage="${OPTARG}"
             ;;
             
         # -v: Verbose mode
         v)
-            VERBOSE=1
+            OPT_Verbose=1
             ;;
         
         # Syntax error
@@ -160,7 +160,7 @@ function cvc::substituteConstants {
         
         if [ "${CVC_Constants[$constantName]}" ]
         then
-            [ "${VERBOSE}" ] && >&2 echo "Retrieving constant '${constantName}'"
+            [ "${OPT_Verbose}" ] && >&2 echo "Retrieving constant '${constantName}'"
             replacement="${CVC_Constants[$constantName]}"
             value="${value//$match/$replacement}"
         else
@@ -206,97 +206,97 @@ function processLine {
                 nextFileToInclude="${currentFileDirname}/${value}.${CFG_FileExtensions_CVC}"
             fi
             
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found an @INCLUDE directive for file ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found an @INCLUDE directive for file ${nextFileToInclude}"
 
         # @CHOIR inclusion directive
         elif [ "$directive" == "@CHOIR" ]
         then
             nextFileToInclude="${CFG_IncludePath_CHOIR}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @CHOIR directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @CHOIR directive pointing towards ${nextFileToInclude}"
 
         # @COMPOSER inclusion directive
         elif [ "$directive" == "@COMPOSER" ]
         then
             nextFileToInclude="${CFG_IncludePath_COMPOSER}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @COMPOSER directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @COMPOSER directive pointing towards ${nextFileToInclude}"
             
         # @CONDUCTOR inclusion directive
         elif [ "$directive" == "@CONDUCTOR" ]
         then
             nextFileToInclude="${CFG_IncludePath_CONDUCTOR}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @CONDUCTOR directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @CONDUCTOR directive pointing towards ${nextFileToInclude}"
             
         # @INSTRUMENT inclusion directive
         elif [ "$directive" == "@INSTRUMENT" ]
         then
             nextFileToInclude="${CFG_IncludePath_INSTRUMENT}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @INSTRUMENT directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @INSTRUMENT directive pointing towards ${nextFileToInclude}"
             
         # @LABEL inclusion directive
         elif [ "$directive" == "@LABEL" ]
         then
             nextFileToInclude="${CFG_IncludePath_LABEL}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @LABEL directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @LABEL directive pointing towards ${nextFileToInclude}"
 
         # @MEDIUMTYPE inclusion directive
         elif [ "$directive" == "@MEDIUMTYPE" ]
         then
             nextFileToInclude="${CFG_IncludePath_MEDIUMTYPE}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @MEDIUMTYPE directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @MEDIUMTYPE directive pointing towards ${nextFileToInclude}"
             
         # @MUSICALERA inclusion directive
         elif [ "$directive" == "@MUSICALERA" ]
         then
             nextFileToInclude="${CFG_IncludePath_MUSICALERA}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @MUSICALERA directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @MUSICALERA directive pointing towards ${nextFileToInclude}"
         
         # @ORCHESTRA inclusion directive
         elif [ "$directive" == "@ORCHESTRA" ]
         then
             nextFileToInclude="${CFG_IncludePath_ORCHESTRA}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @ORCHESTRA directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @ORCHESTRA directive pointing towards ${nextFileToInclude}"
 
         # @RELEASECHANNEL inclusion directive
         elif [ "$directive" == "@RELEASECHANNEL" ]
         then
             nextFileToInclude="${CFG_IncludePath_RELEASECHANNEL}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @RELEASECHANNEL directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @RELEASECHANNEL directive pointing towards ${nextFileToInclude}"
         
         # @RELEASESOURCE inclusion directive
         elif [ "$directive" == "@RELEASESOURCE" ]
         then
             nextFileToInclude="${CFG_IncludePath_RELEASESOURCE}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @RELEASESOURCE directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @RELEASESOURCE directive pointing towards ${nextFileToInclude}"
 
         # @SLICE inclusion directive
         elif [ "$directive" == "@SLICE" ]
         then
             nextFileToInclude="${CFG_IncludePath_SLICE}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @SLICE directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @SLICE directive pointing towards ${nextFileToInclude}"
 
         # @SLICETYPE inclusion directive
         elif [ "$directive" == "@SLICETYPE" ]
         then
             nextFileToInclude="${CFG_IncludePath_SLICETYPE}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @SLICETYPE directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @SLICETYPE directive pointing towards ${nextFileToInclude}"
             
         # @SOLOIST inclusion directive
         elif [ "$directive" == "@SOLOIST" ]
         then
             nextFileToInclude="${CFG_IncludePath_SOLOIST}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @SOLOIST directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @SOLOIST directive pointing towards ${nextFileToInclude}"
         
         # @WORK inclusion directive
         elif [ "$directive" == "@WORK" ]
         then
             nextFileToInclude="${CFG_IncludePath_WORK}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @WORK directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @WORK directive pointing towards ${nextFileToInclude}"
 
         # @WORKTYPE inclusion directive
         elif [ "$directive" == "@WORKTYPE" ]
         then
             nextFileToInclude="${CFG_IncludePath_WORKTYPE}/${value}.${CFG_FileExtensions_CVC}"
-            [ "${VERBOSE}" ] && >&2 echo "INFO: Found a @WORKTYPE directive pointing towards ${nextFileToInclude}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @WORKTYPE directive pointing towards ${nextFileToInclude}"
         
         # If the directive is unknown, we halt here.
         else
@@ -306,9 +306,9 @@ function processLine {
         fi
         
         # Recursive call
-        [ "${VERBOSE}" ] && >&2 echo "ACTION: Including file ${nextFileToInclude}"
+        [ "${OPT_Verbose}" ] && >&2 echo "ACTION: Including file ${nextFileToInclude}"
         processFile "${nextFileToInclude}"
-        [ "${VERBOSE}" ] && >&2 echo "INFO: Back to file ${currentFile}"
+        [ "${OPT_Verbose}" ] && >&2 echo "INFO: Back to file ${currentFile}"
     
     #---------------------------------------------------------------------------
     # Else, if the line is a constant, we need to store it.
@@ -334,11 +334,11 @@ function processLine {
         processConstant=1
         
         # We only process the constant if it is relevant to the target language
-        if [ "${TARGETLANGUAGE}" ]
+        if [ "${OPT_TargetLanguage}" ]
         then
-            if [ "${constantLanguage}" ] && [ "${TARGETLANGUAGE}" != "${constantLanguage}" ]
+            if [ "${constantLanguage}" ] && [ "${OPT_TargetLanguage}" != "${constantLanguage}" ]
             then
-                [ "${VERBOSE}" ] && >&2 echo "INFO: Constant '${constantUID}' with language code '${constantLanguage}' was excluded due to language filtering."
+                [ "${OPT_Verbose}" ] && >&2 echo "INFO: Constant '${constantUID}' with language code '${constantLanguage}' was excluded due to language filtering."
                 processConstant=0
             fi
         fi
@@ -346,7 +346,7 @@ function processLine {
         # Storing the constant
         if [ $processConstant -eq 1 ]
         then
-            [ "${VERBOSE}" ] && >&2 echo "ACTION: Storing constant '${constantUID}' = '${value}'"
+            [ "${OPT_Verbose}" ] && >&2 echo "ACTION: Storing constant '${constantUID}' = '${value}'"
             CVC_Constants["${constantUID}"]="${value}"
         fi
     
@@ -379,11 +379,11 @@ function processLine {
         processAlias=1
         
         # We only process the alias if it is relevant to the target language
-        if [ "${TARGETLANGUAGE}" ]
+        if [ "${OPT_TargetLanguage}" ]
         then
-            if [ "${aliasLanguage}" ] && [ "${TARGETLANGUAGE}" != "${aliasLanguage}" ]
+            if [ "${aliasLanguage}" ] && [ "${OPT_TargetLanguage}" != "${aliasLanguage}" ]
             then
-                [ "${VERBOSE}" ] && >&2 echo "INFO: Alias '${alias}' with language code '${aliasLanguage}' was excluded due to language filtering."
+                [ "${OPT_Verbose}" ] && >&2 echo "INFO: Alias '${alias}' with language code '${aliasLanguage}' was excluded due to language filtering."
                 processAlias=0
             fi
         fi
