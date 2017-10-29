@@ -273,6 +273,12 @@ function processLine {
             nextFileToInclude="${CFG_IncludePath_ORCHESTRA}/${value}.${CFG_FileExtensions_CVC}"
             [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @ORCHESTRA directive pointing towards ${nextFileToInclude}"
 
+        # @RELEASE inclusion directive
+        elif [ "$directive" == "@RELEASE" ]
+        then
+            nextFileToInclude="${CFG_IncludePath_RELEASE}/${value}.${CFG_FileExtensions_CVC}"
+            [ "${OPT_Verbose}" ] && >&2 echo "INFO: Found a @RELEASE directive pointing towards ${nextFileToInclude}"
+
         # @RELEASECHANNEL inclusion directive
         elif [ "$directive" == "@RELEASECHANNEL" ]
         then
