@@ -366,7 +366,7 @@ function processLine {
         value=$(cvc::substituteConstants "${value}")
 
         # Extracting subvalues
-        IFS="|" read -ra values <<< $value
+        IFS="|" read -ra values <<< "${value}"
 
         # Extracting alias language
         if [[ $fullAlias == *":"* ]]
