@@ -54,7 +54,7 @@ while getopts ":fhl:v" option; do
     case "${option}" in
         # -f: Force mode
         f)
-            FORCE=1
+            OPT_Force=1
             ;;
         
         # -h: Help
@@ -70,7 +70,7 @@ while getopts ":fhl:v" option; do
             
         # -v: Verbose mode
         v)
-            VERBOSE=1
+            OPT_Verbose=1
             ;;
         
         # Syntax error
@@ -144,7 +144,7 @@ fi
 # Performing CVC expansion
 ################################################################################
 
-[ "${VERBOSE}" ] && echo "Performing CVC expansion on file ${targetCVCFile}..."
+[ "${OPT_Verbose}" ] && echo "Performing CVC expansion on file ${targetCVCFile}..."
 expansionOutput=$("${CFG_CVCTools_CVCExpand}" ${cvcexpandExtraArgs} "${targetCVCFile}")
 
 if [ ! "$?" -eq 0 ]
@@ -162,17 +162,17 @@ if [ -f "${targetTagsFile}" ]
 then
     echo "${expansionOutput}" | diff -q "${targetTagsFile}" - > /dev/null
     
-    if [ "$?" -gt 0 ] || [ "${FORCE}" ]
+    if [ "$?" -gt 0 ] || [ "${OPT_Force}" ]
     then
-        [ "${VERBOSE}" ] && echo "Updating tag file ${targetTagsFile}..."
+        [ "${OPT_Verbose}" ] && echo "Updating tag file ${targetTagsFile}..."
         echo "${expansionOutput}" > "${targetTagsFile}"
     else
-        [ "${VERBOSE}" ] && echo "Tag file is already up to date."
+        [ "${OPT_Verbose}" ] && echo "Tag file is already up to date."
     fi
 
 # If not tags file exists, we write a new one now
 else
-    [ "${VERBOSE}" ] && echo "Creating tag file '${targetTagsFile}'..."
+    [ "${OPT_Verbose}" ] && echo "Creating tag file '${targetTagsFile}'..."
     echo "${expansionOutput}" > "${targetTagsFile}"
 fi
 
@@ -180,9 +180,9 @@ fi
 # Updating tags
 ################################################################################
 
-if [[ "${targetTagsFile}" -nt "${targetAudioFile}" ]] || [ "${FORCE}" ]
+if [[ "${targetTagsFile}" -nt "${targetAudioFile}" ]] || [ "${OPT_Force}" ]
 then
-    [ "${VERBOSE}" ] && echo "Updating metadata in audio file ${targetAudioFile}..."
+    [ "${OPT_Verbose}" ] && echo "Updating metadata in audio file ${targetAudioFile}..."
     
     # Deleting current FLAC tags
     "${CFG_ExtTools_Metaflac}" --remove-all-tags "${targetAudioFile}" > /dev/null
@@ -202,7 +202,7 @@ then
     fi
     
 else
-    [ "${VERBOSE}" ] && echo "Audio file metadata are already up to date."
+    [ "${OPT_Verbose}" ] && echo "Audio file metadata are already up to date."
 fi
 
 ################################################################################
@@ -211,8 +211,8 @@ fi
 
 # Initializing variables
 updateEmbeddedPictures=0
-frontPictures=()
-backPictures=()
+declare -a frontPictures
+declare -a backPictures
 
 # Searching for picture files
 for pictureBasename in "${CFG_CVCCommit_AlbumArt_Front[@]}" "${CFG_CVCCommit_AlbumArt_Back[@]}"
@@ -231,14 +231,14 @@ do
             if [[ " ${CFG_CVCCommit_AlbumArt_Front[*]} " == *" ${pictureBasename} "*  ]]
             then
                 # We add the picture file to the list of found picture files.
-                [ "${VERBOSE}" ] && echo "Album picture found (front): ${pictureBasename}.${pictureExtension}"
+                [ "${OPT_Verbose}" ] && echo "Album picture found (front): ${pictureBasename}.${pictureExtension}"
                 frontPictures+=("${pictureFile}")
             
             # Back picture
             elif [[ " ${CFG_CVCCommit_AlbumArt_Back[*]} " == *" ${pictureBasename} "*  ]]
             then
                 # We add the picture file to the list of found picture files.
-                [ "${VERBOSE}" ] && echo "Album picture found (back): ${pictureBasename}.${pictureExtension}"
+                [ "${OPT_Verbose}" ] && echo "Album picture found (back): ${pictureBasename}.${pictureExtension}"
                 backPictures+=("${pictureFile}")
             
             else
@@ -251,7 +251,7 @@ do
             # that update requires removing all embedded pictures from the file
             # first, all available pictures will have to be reembedded. A single
             # newer picture file is thus enough to trigger the update process.
-            if [[ "${pictureFile}" -nt "${targetAudioFile}" ]] || [ "${FORCE}" ]
+            if [[ "${pictureFile}" -nt "${targetAudioFile}" ]] || [ "${OPT_Force}" ]
             then
                 updateEmbeddedPictures=1
             fi
@@ -264,7 +264,7 @@ if [ "${updateEmbeddedPictures}" -eq 1 ]
 then
 
     # Deleting previous embedded pictures
-    [ "${VERBOSE}" ] && echo "Removing all embedded pictures from the audio file ${targetAudioFile}..."
+    [ "${OPT_Verbose}" ] && echo "Removing all embedded pictures from the audio file ${targetAudioFile}..."
     "${CFG_ExtTools_Metaflac}" --remove --block-type=PICTURE "${targetAudioFile}" > /dev/null
     
     # Checking removal result
@@ -275,9 +275,9 @@ then
     fi
 
     # Embedding front pictures
-    for pictureFile in "${frontPictures}"
+    for pictureFile in "${frontPictures[@]}"
     do
-        [ "${VERBOSE}" ] && echo "Embedding front picture ${pictureFile} into file ${targetAudioFile}..."            
+        [ "${OPT_Verbose}" ] && echo "Embedding front picture ${pictureFile} into file ${targetAudioFile}..."            
 
         "${CFG_ExtTools_Metaflac}" --import-picture-from="3||||${pictureFile}" "${targetAudioFile}" > /dev/null
         if [ ! "$?" -eq 0 ]
@@ -288,9 +288,9 @@ then
     done
     
     # Embedding back pictures
-    for pictureFile in "${backPictures}"
+    for pictureFile in "${backPictures[@]}"
     do
-        [ "${VERBOSE}" ] && echo "Embedding back picture ${pictureFile} into file ${targetAudioFile}..."            
+        [ "${OPT_Verbose}" ] && echo "Embedding back picture ${pictureFile} into file ${targetAudioFile}..."            
 
         "${CFG_ExtTools_Metaflac}" --import-picture-from="4||||${pictureFile}" "${targetAudioFile}" > /dev/null
         if [ ! "$?" -eq 0 ]
@@ -300,6 +300,6 @@ then
         fi
     done
 else
-    [ "${VERBOSE}" ] && echo "Embedded pictures are up to date."
+    [ "${OPT_Verbose}" ] && echo "Embedded pictures are up to date."
 fi
 

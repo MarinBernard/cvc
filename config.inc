@@ -74,7 +74,7 @@ CFG_CVCExpand_UntitledTracks="[Sans titre]"
 # Ignored files. These files will be ignored by cvccommit, and won't
 # generate an error message. Filenames must be specified without the .cvc
 # extension.
-CFG_CVCCommit_IgnoredFilenames=("album")
+CFG_CVCCommit_IgnoredFilenames=("performance" "release")
 
 # List of valid picture file extensions. These extensions are used to detect
 # album art files.
